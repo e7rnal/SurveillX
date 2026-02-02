@@ -200,7 +200,7 @@ class LowLatencyStreamer:
 async def main():
     parser = argparse.ArgumentParser(description="SurveillX Low-Latency Streaming Client")
     parser.add_argument("--server", default="http://localhost:5000",
-                        help="Server URL (e.g., http://65.0.87.179:5000)")
+                        help="Server URL (e.g., http://surveillx.duckdns.org:5000)")
     parser.add_argument("--camera", type=int, default=0,
                         help="Camera device index")
     parser.add_argument("--quality", type=int, default=65,

@@ -182,7 +182,7 @@ class SocketIOClient:
 async def main():
     import argparse
     parser = argparse.ArgumentParser(description="SurveillX Streaming Client")
-    parser.add_argument("--server", default="http://65.0.87.179:5000", help="Server URL")
+    parser.add_argument("--server", default="http://surveillx.duckdns.org:5000", help="Server URL")
     parser.add_argument("--camera", type=int, default=0, help="Camera index")
     parser.add_argument("--quality", type=int, default=70, help="JPEG quality (30-95)")
     parser.add_argument("--fps", type=int, default=30, help="Target FPS")
