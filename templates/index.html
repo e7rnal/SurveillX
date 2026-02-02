@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SurveillX | Smart Surveillance</title>
+
+    <!-- Auth Check -->
+    <script>
+        // Check authentication immediately (blocking)
+        if (sessionStorage.getItem('surveillx_auth') !== 'true') {
+            window.location.replace('login.html');
+        }
+
+        // Logout function
+        function logout() {
+            sessionStorage.removeItem('surveillx_auth');
+            sessionStorage.removeItem('surveillx_user');
+            window.location.href = 'login.html';
+        }
+    </script>
+
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-eye brand-icon"></i>
+                <span class="brand-text">SurveillX</span>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-view="dashboard">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#live" class="nav-item" data-view="live">
+                    <i class="fa-solid fa-video"></i>
+                    <span>Live Monitor</span>
+                </a>
+                <a href="#attendance" class="nav-item" data-view="attendance">
+                    <i class="fa-solid fa-user-check"></i>
+                    <span>Attendance</span>
+                </a>
+                <a href="#alerts" class="nav-item" data-view="alerts">
+                    <i class="fa-solid fa-bell"></i>
+                    <span>Alerts Log</span>
+                </a>
+                <a href="#students" class="nav-item" data-view="students">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="#settings" class="nav-item" data-view="settings">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="user-profile">
+                <div class="avatar">A</div>
+                <div class="user-info">
+                    <span class="name">Admin User</span>
+                    <span class="role">System Administrator</span>
+                </div>
+                <button onclick="logout()"
+                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0.5rem; margin-left:auto;"
+                    title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 id="page-title">Dashboard Overview</h1>
+                <div class="system-status">
+                    <span class="status-indicator online"></span>
+                    <span class="status-text">System Online</span>
+                </div>
+            </header>
+
+            <!-- Dynamic Content Container -->
+            <div id="view-container" class="view-content">
+                <!-- Content injected via JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../static/js/main.js"></script>
+</body>
+
+</html>

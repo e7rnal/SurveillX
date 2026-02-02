@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registration | SurveillX</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --accent: #3b82f6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            background-color: var(--bg-card);
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #334155;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            color: white;
+            font-family: inherit;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        .photo-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .photo-upload:hover {
+            border-color: var(--accent);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.85rem;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            background-color: #2563eb;
+        }
+
+        .success-message {
+            display: none;
+            text-align: center;
+            color: #22c55e;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <i class="fa-solid fa-graduation-cap"
+                style="font-size: 2rem; color: var(--accent); margin-bottom: 1rem;"></i>
+            <h1>Student Registration</h1>
+            <p>Enter your details to register for the Smart Attendance System.</p>
+        </div>
+
+        <form id="regForm">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" placeholder="John Doe" required>
+            </div>
+
+            <div class="form-group">
+                <label>Roll Number</label>
+                <input type="text" placeholder="e.g. 52" required>
+            </div>
+
+            <div class="form-group">
+                <label>Class / Course</label>
+                <input type="text" placeholder="e.g. BCA III" required>
+            </div>
+
+            <div class="form-group">
+                <label>Profile Photo</label>
+                <div class="photo-upload" onclick="document.getElementById('fileInput').click()">
+                    <i class="fa-solid fa-camera"
+                        style="font-size: 2rem; margin-bottom: 0.5rem; color: var(--text-secondary);"></i>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);">Click to upload or capture photo</p>
+                    <input type="file" id="fileInput" accept="image/*" capture="user" hidden>
+                </div>
+                <p id="fileName"
+                    style="text-align: center; font-size: 0.8rem; margin-top: 0.5rem; color: var(--accent);"></p>
+            </div>
+
+            <button type="submit" class="btn-submit">Submit for Approval</button>
+            <div id="success" class="success-message">
+                <i class="fa-solid fa-check-circle"></i> Submission Sent! Waiting for Admin Approval.
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            if (e.target.files[0]) {
+                document.getElementById('fileName').textContent = 'Selected: ' + e.target.files[0].name;
+            }
+        });
+
+        document.getElementById('regForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            // Mock submission
+            const btn = document.querySelector('.btn-submit');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+            setTimeout(() => {
+                btn.style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+            }, 1500);
+        });
+    </script>
+</body>
+
+</html>

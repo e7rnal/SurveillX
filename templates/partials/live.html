@@ -1,0 +1,348 @@
+<div class="live-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem;">
+    <!-- Camera Feed Card 1 (MAIN STREAM - Default Camera) -->
+    <div class="camera-card" id="main-camera-card"
+        style="background: var(--bg-card); border-radius: 1rem; overflow: hidden; border: var(--glass-border); grid-column: span 2;">
+        <div class="cam-header"
+            style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div class="cam-info">
+                <i class="fa-solid fa-circle text-success" id="cam1-status"
+                    style="font-size: 0.5rem; margin-right: 0.5rem; animation: pulse 1s infinite;"></i>
+                <span style="font-weight: 500;">Entrance Gate - MAIN AI FEED</span>
+            </div>
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); margin-right: 1rem;">1080p | 60fps</span>
+                <span
+                    style="background: var(--accent); color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">AI
+                    ACTIVE</span>
+            </div>
+        </div>
+        <div class="cam-feed" id="main-feed"
+            style="aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden;">
+
+            <!-- Loading State -->
+            <div id="cam1-loading"
+                style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5;">
+                <i class="fa-solid fa-video"
+                    style="font-size: 3rem; color: rgba(255,255,255,0.3); margin-bottom: 1rem;"></i>
+                <p style="color: rgba(255,255,255,0.6);">Initializing camera...</p>
+            </div>
+
+            <!-- Video Element -->
+            <video id="camera-stream" autoplay playsinline muted
+                style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            </video>
+
+            <!-- AI Detection Overlay -->
+            <div id="ai-overlay" style="position: absolute; inset: 0; pointer-events: none; display: none;">
+                <!-- Scanning Line Animation -->
+                <div class="scan-line"></div>
+
+                <!-- Face Detection Box Simulation -->
+                <div class="face-box" style="top: 30%; left: 40%; width: 100px; height: 100px;">
+                    <span class="face-tag">Processing...</span>
+                </div>
+            </div>
+
+            <!-- Overlay Info -->
+            <div
+                style="position: absolute; bottom: 1rem; left: 1rem; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 0.8rem; z-index: 10;">
+                DATETIME: <span id="cam-time">--:--:--</span> <br>
+                CAM_ID: 8847-ENT-01
+            </div>
+
+            <!-- LIVE Badge -->
+            <div class="overlay"
+                style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,0,0,0.8); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; z-index: 10;">
+                ● LIVE
+            </div>
+        </div>
+        <div class="cam-footer"
+            style="padding: 1rem; display: flex; gap: 0.5rem; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap:0.5rem;">
+                <button id="btn-toggle-camera"
+                    style="padding: 0.5rem 1rem; background: var(--accent); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                    <i class="fa-solid fa-play"></i> Start
+                </button>
+                <button
+                    style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                    <i class="fa-solid fa-camera"></i> Snapshot
+                </button>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                Latency: <span id="latency">--</span>ms
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Feed Card 2 (Secondary - Static Demo) -->
+    <div class="camera-card"
+        style="background: var(--bg-card); border-radius: 1rem; overflow: hidden; border: var(--glass-border);">
+        <div class="cam-header"
+            style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div class="cam-info">
+                <i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
+                <span style="font-weight: 500;">Corridor A</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">720p</span>
+        </div>
+        <div class="cam-feed"
+            style="aspect-ratio: 16/9; background: #000; position: relative; display: flex; align-items: center; justify-content: center;">
+            <img src="https://images.unsplash.com/photo-1563205764-6e1b21f36453?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5;" alt="Corridor">
+            <div class="overlay"
+                style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.6); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem;">
+                LIVE</div>
+        </div>
+    </div>
+
+    <!-- Camera Feed Card 3 (Secondary - Static Demo) -->
+    <div class="camera-card"
+        style="background: var(--bg-card); border-radius: 1rem; overflow: hidden; border: var(--glass-border);">
+        <div class="cam-header"
+            style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div class="cam-info">
+                <i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
+                <span style="font-weight: 500;">Library Hall</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">720p</span>
+        </div>
+        <div class="cam-feed"
+            style="aspect-ratio: 16/9; background: #000; position: relative; display: flex; align-items: center; justify-content: center;">
+            <img src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5;" alt="Library">
+            <div class="overlay"
+                style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.6); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem;">
+                LIVE</div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .scan-line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: rgba(59, 130, 246, 0.8);
+        box-shadow: 0 0 4px rgba(59, 130, 246, 0.8);
+        top: 0;
+        left: 0;
+        animation: scan 3s linear infinite;
+        z-index: 10;
+    }
+
+    @keyframes scan {
+        0% {
+            top: 0%;
+            opacity: 0;
+        }
+
+        10% {
+            opacity: 1;
+        }
+
+        90% {
+            opacity: 1;
+        }
+
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    .face-box {
+        position: absolute;
+        border: 2px solid var(--accent);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        z-index: 5;
+        animation: float-box 5s ease-in-out infinite alternate;
+    }
+
+    .face-tag {
+        position: absolute;
+        top: -20px;
+        left: 0;
+        background: var(--accent);
+        color: white;
+        font-size: 0.7rem;
+        padding: 2px 4px;
+        border-radius: 2px;
+    }
+
+    @keyframes float-box {
+        0% {
+            transform: translate(0, 0);
+        }
+
+        33% {
+            transform: translate(20px, 15px);
+        }
+
+        66% {
+            transform: translate(-10px, 30px);
+        }
+
+        100% {
+            transform: translate(5px, -10px);
+        }
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.4;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+
+<script>
+    (function () {
+        let stream = null;
+        let isStreaming = false;
+
+        // Initialize camera stream
+        async function initCamera() {
+            const videoElement = document.getElementById('camera-stream');
+            const loadingEl = document.getElementById('cam1-loading');
+            const aiOverlay = document.getElementById('ai-overlay');
+            const statusIcon = document.getElementById('cam1-status');
+            const toggleBtn = document.getElementById('btn-toggle-camera');
+            const latencyEl = document.getElementById('latency');
+
+            if (!videoElement) {
+                console.error('Video element not found');
+                return;
+            }
+
+            try {
+                // Request camera access
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    },
+                    audio: false
+                });
+
+                // Attach stream to video element
+                videoElement.srcObject = stream;
+
+                // Wait for video to be ready
+                await new Promise(resolve => {
+                    videoElement.onloadedmetadata = () => {
+                        videoElement.play();
+                        resolve();
+                    };
+                });
+
+                // Hide loading, show video
+                loadingEl.style.display = 'none';
+                videoElement.style.display = 'block';
+
+                // Show AI overlay after 1 second
+                setTimeout(() => {
+                    aiOverlay.style.display = 'block';
+                }, 1000);
+
+                // Update button
+                toggleBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop';
+                toggleBtn.style.background = 'rgba(239, 68, 68, 0.8)';
+                isStreaming = true;
+
+                // Simulate latency
+                latencyEl.textContent = Math.floor(Math.random() * 20) + 15;
+
+                console.log('Camera stream started successfully');
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                loadingEl.innerHTML = `
+                <i class="fa-solid fa-video-slash" style="font-size: 3rem; color: rgba(255,68,68,0.5);"></i>
+                <p style="color: rgba(255,68,68,0.8); margin-top: 1rem;">Camera access denied or not available</p>
+                <p style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">Please grant camera permissions</p>
+            `;
+                statusIcon.classList.remove('text-success');
+                statusIcon.style.color = '#ef4444';
+                toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i> Retry';
+            }
+        }
+
+        // Stop camera stream
+        function stopCamera() {
+            const videoElement = document.getElementById('camera-stream');
+            const loadingEl = document.getElementById('cam1-loading');
+            const aiOverlay = document.getElementById('ai-overlay');
+            const toggleBtn = document.getElementById('btn-toggle-camera');
+            const statusIcon = document.getElementById('cam1-status');
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+
+            videoElement.style.display = 'none';
+            aiOverlay.style.display = 'none';
+            loadingEl.style.display = 'flex';
+            loadingEl.innerHTML = `
+            <i class="fa-solid fa-video" style="font-size: 3rem; color: rgba(255,255,255,0.3); margin-bottom: 1rem;"></i>
+            <p style="color: rgba(255,255,255,0.6);">Camera stopped</p>
+        `;
+
+            toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i> Start';
+            toggleBtn.style.background = 'var(--accent)';
+            statusIcon.classList.remove('text-success');
+            statusIcon.style.color = '#94a3b8';
+            isStreaming = false;
+        }
+
+        // Toggle camera
+        function toggleCamera() {
+            if (isStreaming) {
+                stopCamera();
+            } else {
+                initCamera();
+            }
+        }
+
+        // Update time
+        function updateTime() {
+            const timeEl = document.getElementById('cam-time');
+            if (timeEl) {
+                setInterval(() => {
+                    const now = new Date();
+                    timeEl.textContent = now.toLocaleTimeString();
+                }, 1000);
+            }
+        }
+
+        // Wait for DOM ready
+        const initWhenReady = () => {
+            const toggleBtn = document.getElementById('btn-toggle-camera');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', toggleCamera);
+                updateTime();
+
+                // Auto-start camera after 500ms
+                setTimeout(() => {
+                    initCamera();
+                }, 500);
+            } else {
+                // Retry after 100ms if button not found yet
+                setTimeout(initWhenReady, 100);
+            }
+        };
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initWhenReady);
+        } else {
+            initWhenReady();
+        }
+    })();
+</script>

@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required
 
 attendance_bp = Blueprint('attendance', __name__)
 
-@students_bp.route('/', methods=['GET'])
+@attendance_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_attendance():
     try:

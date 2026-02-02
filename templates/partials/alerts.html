@@ -1,0 +1,78 @@
+<div class="content-header" style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.25rem;">Security Alerts & Logs</h2>
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <select
+            style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white;">
+            <option>All Severity</option>
+            <option>Critical</option>
+            <option>Warning</option>
+            <option>Info</option>
+        </select>
+        <button class="btn-clear"
+            style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
+            <i class="fa-solid fa-trash"></i> Clear All
+        </button>
+    </div>
+</div>
+
+<div class="alerts-container" style="display: flex; flex-direction: column; gap: 1rem;">
+
+    <!-- Critical Alert -->
+    <div class="alert-item"
+        style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem;">
+        <div class="alert-icon"
+            style="background: var(--danger); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fa-solid fa-person-running"></i>
+        </div>
+        <div class="alert-content" style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Suspicious Activity Detected</h3>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">2 mins ago</span>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Rapid movement detected in Corridor B
+                during class hours.</p>
+            <div style="margin-top: 0.5rem;">
+                <button
+                    style="font-size: 0.8rem; background: #1e293b; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.25rem; cursor: pointer;">View
+                    Clip</button>
+                <button
+                    style="font-size: 0.8rem; background: none; color: var(--text-secondary); border: none; padding: 0.25rem 0.75rem; cursor: pointer;">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Alert -->
+    <div class="alert-item"
+        style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem;">
+        <div class="alert-icon"
+            style="background: var(--warning); color: black; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fa-solid fa-eye-slash"></i>
+        </div>
+        <div class="alert-content" style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Camera Obstructed</h3>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">15 mins ago</span>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Camera 04 (Library) view is partially
+                blocked.</p>
+        </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert-item"
+        style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem;">
+        <div class="alert-icon"
+            style="background: var(--accent); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fa-solid fa-server"></i>
+        </div>
+        <div class="alert-content" style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">System Backup Completed</h3>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">1 hour ago</span>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Daily database backup successful. Size:
+                45MB.</p>
+        </div>
+    </div>
+
+</div>

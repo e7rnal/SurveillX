@@ -1,0 +1,72 @@
+<div class="content-header" style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.25rem;">Attendance Logs</h2>
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <div class="search-box"
+            style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+            <i class="fa-solid fa-search" style="color: var(--text-secondary);"></i>
+            <input type="text" placeholder="Search by name or roll no..."
+                style="background: none; border: none; color: white; outline: none; width: 100%;">
+        </div>
+        <input type="date"
+            style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white; color-scheme: dark;">
+        <button class="btn-export"
+            style="background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
+            <i class="fa-solid fa-download"></i> Export CSV
+        </button>
+    </div>
+</div>
+
+<div class="table-container"
+    style="background: var(--bg-card); border-radius: 1rem; border: var(--glass-border); overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr
+                style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 0.85rem;">
+                <th style="padding: 1rem 2rem;">Time</th>
+                <th style="padding: 1rem;">Student Name</th>
+                <th style="padding: 1rem;">Roll No</th>
+                <th style="padding: 1rem;">Class</th>
+                <th style="padding: 1rem;">Captured via</th>
+                <th style="padding: 1rem;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:45 AM</td>
+                <td style="padding: 1rem; font-weight: 500;">Vishnu Jadhav</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">52</td>
+                <td style="padding: 1rem;">BCA - III</td>
+                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-01</td>
+                <td style="padding: 1rem;"><span style="color: var(--success);"><i class="fa-solid fa-check-circle"></i>
+                        Present</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:42 AM</td>
+                <td style="padding: 1rem; font-weight: 500;">Rohan Sharma</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">45</td>
+                <td style="padding: 1rem;">BCA - III</td>
+                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-01</td>
+                <td style="padding: 1rem;"><span style="color: var(--success);"><i class="fa-solid fa-check-circle"></i>
+                        Present</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:38 AM</td>
+                <td style="padding: 1rem; font-weight: 500;">Priya Singh</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">12</td>
+                <td style="padding: 1rem;">BCA - II</td>
+                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-02</td>
+                <td style="padding: 1rem;"><span style="color: var(--success);"><i class="fa-solid fa-check-circle"></i>
+                        Present</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:30 AM</td>
+                <td style="padding: 1rem; font-weight: 500;">Amit Kumar</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">08</td>
+                <td style="padding: 1rem;">BCA - III</td>
+                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-01</td>
+                <td style="padding: 1rem;"><span style="color: var(--warning);"><i class="fa-solid fa-clock"></i>
+                        Late</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>

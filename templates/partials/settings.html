@@ -1,0 +1,81 @@
+<div class="content-header" style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.25rem;">System Settings</h2>
+</div>
+
+<div class="settings-grid"
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+
+    <!-- System Card -->
+    <div class="setting-card"
+        style="background: var(--bg-card); padding: 1.5rem; border-radius: 1rem; border: var(--glass-border);">
+        <h3
+            style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-server text-accent"></i> System Control
+        </h3>
+
+        <div class="setting-item"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+                <span style="display: block; font-weight: 500;">System Active</span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Enable entire surveillance system</span>
+            </div>
+            <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 24px;">
+                <input type="checkbox" checked style="opacity: 0; width: 0; height: 0;">
+                <span class="slider"
+                    style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 24px;"></span>
+                <span class="knob"
+                    style="position: absolute; content: ''; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; transform: translateX(16px); background-color: var(--success);"></span>
+            </label>
+        </div>
+
+        <div class="setting-item"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+                <span style="display: block; font-weight: 500;">Maintenance Mode</span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Disable alerts during maintenance</span>
+            </div>
+            <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 24px;">
+                <input type="checkbox" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider"
+                    style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 24px;"></span>
+                <span class="knob"
+                    style="position: absolute; content: ''; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Notifications Card -->
+    <div class="setting-card"
+        style="background: var(--bg-card); padding: 1.5rem; border-radius: 1rem; border: var(--glass-border);">
+        <h3
+            style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-bell text-warning"></i> Notifications
+        </h3>
+
+        <div class="setting-item"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+                <span style="display: block; font-weight: 500;">Email Alerts</span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Send security alerts to admin
+                    email</span>
+            </div>
+            <input type="checkbox" checked style="accent-color: var(--accent); transform: scale(1.2);">
+        </div>
+
+        <div class="setting-item"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+                <span style="display: block; font-weight: 500;">Sound Alert</span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Play sound on critical events</span>
+            </div>
+            <input type="checkbox" checked style="accent-color: var(--accent); transform: scale(1.2);">
+        </div>
+    </div>
+
+</div>
+
+<div style="margin-top: 2rem; text-align: right;">
+    <button
+        style="background: var(--accent); color: white; border: none; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Save
+        Changes</button>
+</div>

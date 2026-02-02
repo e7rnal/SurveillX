@@ -1,0 +1,479 @@
+<div class="content-header"
+    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <h2 style="margin: 0; font-size: 1.25rem;">Student Database</h2>
+        <!-- Tabs -->
+        <div
+            style="background: var(--bg-card); padding: 0.25rem; border-radius: 0.5rem; border: var(--glass-border); display: flex;">
+            <button class="tab-btn active"
+                style="background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.35rem; cursor: pointer; font-size: 0.85rem;">Active
+                (124)</button>
+            <button class="tab-btn"
+                style="background: transparent; color: var(--text-secondary); border: none; padding: 0.5rem 1rem; border-radius: 0.35rem; cursor: pointer; font-size: 0.85rem;">Pending
+                Requests <span
+                    style="background: var(--danger); color: white; padding: 0 0.4rem; border-radius: 1rem; font-size: 0.7rem;">3</span></button>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+        <button id="btn-qr"
+            style="background: #334155; color: white; border: var(--glass-border); padding: 0.75rem 1rem; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+            <i class="fa-solid fa-qrcode"></i> Registration Link
+        </button>
+        <button id="btn-manual-add" class="btn-primary"
+            style="background: var(--accent); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-plus"></i> Manual Add
+        </button>
+    </div>
+</div>
+
+<!-- QR Code Panel (Enhanced) -->
+<div id="qr-panel"
+    style="display: none; margin-bottom: 2rem; background: var(--bg-card); padding: 2rem; border-radius: 1rem; border: 1px solid var(--accent); text-align: center;">
+    <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;"><i class="fa-solid fa-qrcode"
+            style="color: var(--accent); margin-right: 0.5rem;"></i>Student Registration Link</h3>
+
+    <div
+        style="background: white; padding: 1.5rem; border-radius: 0.75rem; display: inline-block; margin-bottom: 1.5rem;">
+        <img id="qr-code-img"
+            src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://forms.gle/PLACEHOLDER_FORM_ID"
+            alt="QR Code" style="display: block;">
+    </div>
+
+    <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">Google Form URL:
+        </p>
+        <p id="reg-url"
+            style="margin: 0; color: var(--accent); font-family: monospace; font-size: 0.95rem; word-break: break-all;">
+            https://forms.gle/PLACEHOLDER_FORM_ID</p>
+    </div>
+
+    <button id="btn-copy-url"
+        style="background: var(--accent); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+        <i class="fa-solid fa-copy"></i> Copy Link
+    </button>
+</div>
+
+<!-- Manual Add Student Modal -->
+<div id="manual-add-modal"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div
+        style="background: var(--bg-card); border-radius: 1rem; border: var(--glass-border); max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+
+        <!-- Modal Header -->
+        <div
+            style="padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--bg-card); z-index: 10;">
+            <h3 style="margin: 0; font-size: 1.25rem;"><i class="fa-solid fa-user-plus"
+                    style="color: var(--accent); margin-right: 0.5rem;"></i>Add New Student</h3>
+            <button id="btn-close-modal"
+                style="background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.25rem; transition: all 0.2s;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <form id="add-student-form" style="padding: 2rem;">
+
+            <!-- Photo Upload Section -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div id="photo-preview"
+                    style="width: 120px; height: 120px; margin: 0 auto 1rem; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 3px solid var(--accent);">
+                    <i class="fa-solid fa-camera" style="font-size: 2.5rem; color: rgba(255,255,255,0.3);"></i>
+                    <img id="preview-img" src="" alt="Preview"
+                        style="display: none; width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <input type="file" id="student-photo" accept="image/*" style="display: none;">
+                <button type="button" id="btn-upload-photo"
+                    style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--accent); color: var(--accent); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                    <i class="fa-solid fa-upload"></i> Upload Photo
+                </button>
+            </div>
+
+            <!-- Form Fields -->
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+
+                <!-- Student Name -->
+                <div>
+                    <label
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 500; font-size: 0.9rem;">
+                        <i class="fa-solid fa-user" style="color: var(--accent); margin-right: 0.25rem;"></i> Student
+                        Name *
+                    </label>
+                    <input type="text" id="input-name" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; font-size: 0.95rem; outline: none; transition: all 0.2s;"
+                        placeholder="Enter full name">
+                </div>
+
+                <!-- Roll Number -->
+                <div>
+                    <label
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 500; font-size: 0.9rem;">
+                        <i class="fa-solid fa-hashtag" style="color: var(--accent); margin-right: 0.25rem;"></i> Roll
+                        Number *
+                    </label>
+                    <input type="text" id="input-roll" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; font-size: 0.95rem; outline: none; transition: all 0.2s;"
+                        placeholder="Enter roll number">
+                </div>
+
+                <!-- Class/Year -->
+                <div>
+                    <label
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 500; font-size: 0.9rem;">
+                        <i class="fa-solid fa-graduation-cap" style="color: var(--accent); margin-right: 0.25rem;"></i>
+                        Class *
+                    </label>
+                    <select id="input-class" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; font-size: 0.95rem; outline: none; cursor: pointer; color-scheme: dark;">
+                        <option value="">Select Class</option>
+                        <option value="BCA - I">BCA - I</option>
+                        <option value="BCA - II">BCA - II</option>
+                        <option value="BCA - III">BCA - III</option>
+                        <option value="MCA - I">MCA - I</option>
+                        <option value="MCA - II">MCA - II</option>
+                    </select>
+                </div>
+
+                <!-- Email (Optional) -->
+                <div>
+                    <label
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 500; font-size: 0.9rem;">
+                        <i class="fa-solid fa-envelope" style="color: var(--accent); margin-right: 0.25rem;"></i> Email
+                    </label>
+                    <input type="email" id="input-email"
+                        style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; font-size: 0.95rem; outline: none; transition: all 0.2s;"
+                        placeholder="student@example.com">
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" id="btn-cancel-form"
+                    style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+                    Cancel
+                </button>
+                <button type="submit"
+                    style="background: var(--accent); color: white; border: none; padding: 0.75rem 2rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                    <i class="fa-solid fa-check"></i> Add Student
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-container"
+    style="background: var(--bg-card); border-radius: 1rem; border: var(--glass-border); overflow: hidden;">
+    <!-- Active Table (Default) -->
+    <table id="table-active" style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr
+                style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 0.85rem;">
+                <th style="padding: 1.5rem 2rem;">Student Name</th>
+                <th style="padding: 1.5rem;">Roll No</th>
+                <th style="padding: 1.5rem;">Class</th>
+                <th style="padding: 1.5rem;">Status</th>
+                <th style="padding: 1.5rem;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="students-table-body">
+            <!-- Populated by JS -->
+        </tbody>
+    </table>
+
+    <!-- Pending Table (Hidden essentially in this mock, but structure shown for clarity if we toggled) -->
+    <table id="table-pending" style="width: 100%; border-collapse: collapse; text-align: left; display: none;">
+        <thead>
+            <tr
+                style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 0.85rem;">
+                <th style="padding: 1.5rem 2rem;">Applicant</th>
+                <th style="padding: 1.5rem;">Roll No</th>
+                <th style="padding: 1.5rem;">Submitted Photo</th>
+                <th style="padding: 1.5rem;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="background: rgba(245, 158, 11, 0.05);">
+                <td style="padding: 1rem 2rem; font-weight: 500;">Aditya Jadhav</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">56</td>
+                <td style="padding: 1rem;">
+                    <button
+                        style="font-size: 0.8rem; color: var(--accent); background: none; border: 1px solid var(--accent); padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer;">View
+                        Photo</button>
+                </td>
+                <td style="padding: 1rem; display: flex; gap: 0.5rem;">
+                    <button
+                        style="background: var(--success); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.35rem; cursor: pointer; font-size: 0.85rem;"><i
+                            class="fa-solid fa-check"></i> Approve</button>
+                    <button
+                        style="background: var(--danger); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.35rem; cursor: pointer; font-size: 0.85rem;"><i
+                            class="fa-solid fa-xmark"></i> Reject</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Inline script for student management functionality
+
+    // Toggle Tabs
+    const tabs = document.querySelectorAll('.tab-btn');
+    const tableActive = document.getElementById('table-active');
+    const tablePending = document.getElementById('table-pending');
+
+    tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => {
+                t.style.background = 'transparent';
+                t.style.color = '#94a3b8';
+            });
+            tab.style.background = '#3b82f6';
+            tab.style.color = 'white';
+
+            if (index === 0) {
+                tableActive.style.display = 'table';
+                tablePending.style.display = 'none';
+            } else {
+                tableActive.style.display = 'none';
+                tablePending.style.display = 'table';
+            }
+        });
+    });
+
+    // Toggle QR Panel
+    const btnQr = document.getElementById('btn-qr');
+    const qrPanel = document.getElementById('qr-panel');
+
+    if (btnQr) {
+        btnQr.addEventListener('click', () => {
+            qrPanel.style.display = qrPanel.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+
+    // Copy Registration URL
+    const btnCopyUrl = document.getElementById('btn-copy-url');
+    const regUrl = document.getElementById('reg-url');
+
+    if (btnCopyUrl) {
+        btnCopyUrl.addEventListener('click', () => {
+            const url = regUrl.textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const originalText = btnCopyUrl.innerHTML;
+                btnCopyUrl.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                btnCopyUrl.style.background = '#22c55e';
+                setTimeout(() => {
+                    btnCopyUrl.innerHTML = originalText;
+                    btnCopyUrl.style.background = 'var(--accent)';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy URL');
+            });
+        });
+    }
+
+    // Manual Add Modal
+    const btnManualAdd = document.getElementById('btn-manual-add');
+    const manualAddModal = document.getElementById('manual-add-modal');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCancelForm = document.getElementById('btn-cancel-form');
+    const addStudentForm = document.getElementById('add-student-form');
+
+    // Open Modal
+    if (btnManualAdd) {
+        btnManualAdd.addEventListener('click', () => {
+            manualAddModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        });
+    }
+
+    // Close Modal Function
+    function closeModal() {
+        manualAddModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        // Reset form
+        addStudentForm.reset();
+        const previewImg = document.getElementById('preview-img');
+        const photoPreview = document.getElementById('photo-preview');
+        previewImg.style.display = 'none';
+        photoPreview.querySelector('.fa-camera').style.display = 'block';
+    }
+
+    // Close modal handlers
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', closeModal);
+    }
+
+    if (btnCancelForm) {
+        btnCancelForm.addEventListener('click', closeModal);
+    }
+
+    // Close on outside click
+    if (manualAddModal) {
+        manualAddModal.addEventListener('click', (e) => {
+            if (e.target === manualAddModal) {
+                closeModal();
+            }
+        });
+    }
+
+    // Photo Upload Preview
+    const btnUploadPhoto = document.getElementById('btn-upload-photo');
+    const studentPhoto = document.getElementById('student-photo');
+    const previewImg = document.getElementById('preview-img');
+    const photoPreview = document.getElementById('photo-preview');
+
+    if (btnUploadPhoto) {
+        btnUploadPhoto.addEventListener('click', () => {
+            studentPhoto.click();
+        });
+    }
+
+    if (studentPhoto) {
+        studentPhoto.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    previewImg.src = event.target.result;
+                    previewImg.style.display = 'block';
+                    photoPreview.querySelector('.fa-camera').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Form Submission
+    if (addStudentForm) {
+        addStudentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('input-name').value;
+            const roll = document.getElementById('input-roll').value;
+            const studentClass = document.getElementById('input-class').value;
+            const email = document.getElementById('input-email').value;
+            const photo = document.getElementById('student-photo').files[0];
+
+            // Validation
+            if (!name || !roll || !studentClass) {
+                alert('Please fill in all required fields (Name, Roll Number, Class)');
+                return;
+            }
+
+            // VALIDATION: Student Name (No digits allowed)
+            if (/\d/.test(name)) {
+                alert('Student Name cannot contain numbers. Please enter a valid name.');
+                return;
+            }
+
+            // Create new student object (in real app, this would be sent to backend)
+            // const newStudent = {
+            //     name,
+            //     roll,
+            //     class: studentClass,
+            //     email,
+            //     photo: photo ? URL.createObjectURL(photo) : null,
+            //     status: 'Active',
+            //     addedDate: new Date().toISOString()
+            // };
+
+            // Log to console (in real app, send to backend API)
+            // console.log('New student added:', newStudent);
+
+            // SAVE TO LOCAL STORAGE
+            const newStudent = {
+                name,
+                roll,
+                class: studentClass,
+                status: 'Active'
+            };
+
+            let students = JSON.parse(localStorage.getItem('surveillx_students')) || [];
+            students.unshift(newStudent); // Add to beginning
+            localStorage.setItem('surveillx_students', JSON.stringify(students));
+
+            // Show success message
+            alert(`Student "${name}" added successfully!`);
+
+            // Close modal
+            closeModal();
+
+            renderStudents();
+        });
+    }
+
+    // Input focus effects
+    const inputs = document.querySelectorAll('input[type="text"], input[type="email"], select');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function () {
+            this.style.borderColor = 'var(--accent)';
+            this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+        });
+
+        input.addEventListener('blur', function () {
+            this.style.borderColor = 'rgba(255,255,255,0.1)';
+            this.style.boxShadow = 'none';
+        });
+    });
+
+    // Close button hover effect
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('mouseenter', function () {
+            this.style.background = 'rgba(239, 68, 68, 0.1)';
+            this.style.color = '#ef4444';
+        });
+
+        btnCloseModal.addEventListener('mouseleave', function () {
+            this.style.background = 'none';
+            this.style.color = 'var(--text-secondary)';
+        });
+    }
+
+    // --- LOCAL STORAGE PERSISTENCE START ---
+    const renderStudents = () => {
+        const tbody = document.getElementById('students-table-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        // Get from local storage or use default
+        let students = JSON.parse(localStorage.getItem('surveillx_students'));
+        if (!students) {
+            // Default Dummy Data
+            students = [
+                { name: 'Vishnu Jadhav', roll: '52', class: 'BCA - III', status: 'Active' }
+            ];
+            localStorage.setItem('surveillx_students', JSON.stringify(students));
+        }
+
+        students.forEach(student => {
+            const newRow = document.createElement('tr');
+            newRow.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+            newRow.innerHTML = `
+                <td style="padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 36px; height: 36px; background: #334155; border-radius: 50%;"></div>
+                    <span>${student.name}</span>
+                </td>
+                <td style="padding: 1rem; color: var(--text-secondary);">${student.roll}</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">${student.class}</td>
+                <td style="padding: 1rem;"><span style="background: rgba(34, 197, 94, 0.1); color: var(--success); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem;">${student.status}</span></td>
+                <td style="padding: 1rem;">
+                    <button style="background: none; border: none; color: var(--text-secondary); cursor: pointer;"><i class="fa-solid fa-ellipsis"></i></button>
+                </td>
+            `;
+            tbody.appendChild(newRow);
+        });
+
+        // Update Active Count
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab) {
+            activeTab.textContent = `Active (${students.length})`;
+        }
+    };
+
+    // Render initially
+    renderStudents();
+    // --- LOCAL STORAGE PERSISTENCE END ---
+
+</script>
