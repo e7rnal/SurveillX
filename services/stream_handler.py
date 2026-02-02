@@ -31,9 +31,9 @@ class StreamHandler(Namespace):
         self.connected_clients.add(1)
         emit('status', {'connected': True, 'message': 'Connected to stream server'})
     
-    def on_disconnect(self):
+    def on_disconnect(self, reason=None):
         """Client disconnected"""
-        logger.info(f"Stream client disconnected: {self.namespace}")
+        logger.info(f"Stream client disconnected: {self.namespace} (reason: {reason})")
         self.connected_clients.discard(1)
     
     def on_frame(self, data):
@@ -65,16 +65,16 @@ class StreamHandler(Namespace):
             # Process frame for detections
             detections = self.process_frame(frame, camera_id)
             
-            # Broadcast frame to dashboard viewers
+            # Broadcast frame to ALL connected clients (including /stream namespace)
             emit('frame', {
                 'frame': frame_data,
                 'timestamp': timestamp,
                 'camera_id': camera_id
-            }, broadcast=True, namespace='/')
+            }, broadcast=True)
             
             # Broadcast detections
             if detections:
-                emit('detection', detections, broadcast=True, namespace='/')
+                emit('detection', detections, broadcast=True)
                 
         except Exception as e:
             logger.error(f"Frame processing error: {e}")
