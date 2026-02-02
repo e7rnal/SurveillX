@@ -5,75 +5,222 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SurveillX - Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="AI-powered campus surveillance system login">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        * {
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background effects */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Floating shapes */
+        .shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .shape {
+            position: absolute;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: float 15s infinite ease-in-out;
+        }
+
+        .shape-1 {
+            width: 400px;
+            height: 400px;
+            top: -10%;
+            left: -10%;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: 300px;
+            height: 300px;
+            bottom: -10%;
+            right: -10%;
+            animation-delay: -5s;
+        }
+
+        .shape-3 {
+            width: 200px;
+            height: 200px;
+            top: 50%;
+            right: 20%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            25% {
+                transform: translate(30px, -30px) rotate(5deg);
+            }
+
+            50% {
+                transform: translate(0, -50px) rotate(0deg);
+            }
+
+            75% {
+                transform: translate(-30px, -30px) rotate(-5deg);
+            }
         }
 
         .login-container {
             width: 100%;
             max-width: 420px;
-        }
-
-        .login-card {
-            background: rgba(30, 41, 59, 0.9);
-            border-radius: 1rem;
             padding: 2.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
+            animation: slideUp 0.6s ease;
         }
 
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Logo */
         .logo {
-            display: flex;
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo-icon {
+            width: 72px;
+            height: 72px;
+            background: var(--accent-gradient);
+            border-radius: 18px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.75rem;
-            margin-bottom: 2rem;
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
         }
 
-        .logo i {
-            font-size: 2.5rem;
-            color: #6366f1;
-        }
-
-        .logo span {
+        .logo-text {
             font-size: 2rem;
             font-weight: 700;
-            color: white;
+            color: var(--text-primary);
+            letter-spacing: -1px;
         }
 
-        .subtitle {
+        .logo-text span {
+            color: var(--accent-primary);
+        }
+
+        .logo-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Login Card */
+        .login-card {
+            background: rgba(26, 26, 36, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+        }
+
+        .login-card h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
             text-align: center;
-            color: #94a3b8;
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
         }
 
+        .login-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Form */
         .form-group {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.5rem;
         }
 
         .form-group label {
             display: block;
-            color: #94a3b8;
             font-size: 0.875rem;
-            margin-bottom: 0.5rem;
             font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
         }
 
         .input-wrapper {
@@ -85,94 +232,233 @@
             left: 1rem;
             top: 50%;
             transform: translateY(-50%);
-            color: #64748b;
-        }
-
-        .input-wrapper input {
-            width: 100%;
-            padding: 0.875rem 1rem 0.875rem 2.75rem;
-            background: #0f172a;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.5rem;
-            color: white;
+            color: var(--text-muted);
             font-size: 1rem;
-            transition: border-color 0.2s;
         }
 
-        .input-wrapper input:focus {
-            outline: none;
-            border-color: #6366f1;
-        }
-
-        .input-wrapper input::placeholder {
-            color: #4b5563;
-        }
-
-        .btn-login {
+        .form-group input {
             width: 100%;
-            padding: 1rem;
-            background: #6366f1;
-            border: none;
-            border-radius: 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.9rem 1rem 0.9rem 3rem;
+            font-size: 1rem;
+            color: var(--text-primary);
+            transition: all 0.25s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Remember & Forgot */
+        .form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .remember-me input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-primary);
+        }
+
+        .forgot-link {
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .forgot-link:hover {
+            color: var(--accent-secondary);
+        }
+
+        /* Button */
+        .login-btn {
+            width: 100%;
+            background: var(--accent-gradient);
             color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            margin-top: 1rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-family: inherit;
         }
 
-        .btn-login:hover {
-            background: #4f46e5;
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
         }
 
-        .btn-login:active {
-            transform: scale(0.98);
+        .login-btn:active {
+            transform: translateY(0);
         }
 
-        .btn-login:disabled {
+        .login-btn:disabled {
             opacity: 0.7;
             cursor: not-allowed;
+            transform: none;
         }
 
-        .error-message {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #ef4444;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
+        .login-btn .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
             display: none;
         }
 
-        .footer-text {
+        .login-btn.loading .spinner {
+            display: block;
+        }
+
+        .login-btn.loading span {
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Error message */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-message.show {
+            display: flex;
+        }
+
+        /* Footer */
+        .login-footer {
             text-align: center;
-            color: #64748b;
-            font-size: 0.8rem;
             margin-top: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .login-footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        /* Features */
+        .features {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .feature {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .feature i {
+            font-size: 1.25rem;
+            color: var(--accent-primary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 1.5rem;
+            }
+
+            .login-card {
+                padding: 1.5rem;
+            }
+
+            .features {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .feature {
+                flex: 1;
+                min-width: 80px;
+            }
         }
     </style>
 </head>
 
 <body>
+    <!-- Background shapes -->
+    <div class="shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
     <div class="login-container">
-        <div class="login-card">
-            <div class="logo">
+        <!-- Logo -->
+        <div class="logo">
+            <div class="logo-icon">
                 <i class="fa-solid fa-shield-halved"></i>
-                <span>SurveillX</span>
             </div>
+            <div class="logo-text">Surveil<span>X</span></div>
+            <div class="logo-subtitle">Smart Campus Surveillance</div>
+        </div>
 
-            <p class="subtitle">Smart Surveillance System</p>
+        <!-- Login Card -->
+        <div class="login-card">
+            <h2>Welcome Back</h2>
+            <p>Sign in to access the surveillance dashboard</p>
 
-            <div id="error-message" class="error-message"></div>
+            <div id="error-message" class="error-message">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="error-text">Invalid credentials</span>
+            </div>
 
             <form id="login-form">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-user"></i>
-                        <input type="text" id="username" placeholder="Enter username" autocomplete="username" required>
+                        <input type="text" id="username" name="username" placeholder="Enter your username" required>
                     </div>
                 </div>
 
@@ -180,64 +466,102 @@
                     <label for="password">Password</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-lock"></i>
-                        <input type="password" id="password" placeholder="Enter password"
-                            autocomplete="current-password" required>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-login" id="login-btn">
-                    Sign In
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" name="remember">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="login-btn" id="login-btn">
+                    <div class="spinner"></div>
+                    <span>Sign In</span>
+                    <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </form>
 
-            <p class="footer-text">Secured by SurveillX © 2026</p>
+            <div class="features">
+                <div class="feature">
+                    <i class="fa-solid fa-face-smile"></i>
+                    Face Recognition
+                </div>
+                <div class="feature">
+                    <i class="fa-solid fa-video"></i>
+                    Live Monitoring
+                </div>
+                <div class="feature">
+                    <i class="fa-solid fa-bell"></i>
+                    Smart Alerts
+                </div>
+            </div>
+        </div>
+
+        <div class="login-footer">
+            &copy; 2026 SurveillX. <a href="#">Privacy Policy</a>
         </div>
     </div>
 
+    <script src="/static/js/api.js"></script>
     <script>
-        const API_BASE = window.location.origin;
+        const form = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
 
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        // Check if already logged in
+        if (API.isAuthenticated()) {
+            window.location.href = '/templates/index.html';
+        }
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('error-message');
-            const btn = document.getElementById('login-btn');
 
-            btn.disabled = true;
-            btn.textContent = 'Signing in...';
-            errorEl.style.display = 'none';
+            // Show loading
+            loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
+            errorMessage.classList.remove('show');
 
             try {
-                const response = await fetch(`${API_BASE}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
+                await API.login(username, password);
 
-                const data = await response.json();
+                // Success - redirect
+                window.location.href = '/templates/index.html';
 
-                if (response.ok && data.token) {
-                    localStorage.setItem('jwt_token', data.token);
-                    window.location.href = '/templates/index.html';
-                } else {
-                    errorEl.textContent = data.error || 'Invalid credentials';
-                    errorEl.style.display = 'block';
-                }
             } catch (error) {
-                errorEl.textContent = 'Connection error. Please try again.';
-                errorEl.style.display = 'block';
+                // Show error
+                errorText.textContent = error.message || 'Invalid username or password';
+                errorMessage.classList.add('show');
+
+                // Shake animation
+                errorMessage.style.animation = 'none';
+                setTimeout(() => {
+                    errorMessage.style.animation = 'shake 0.5s ease';
+                }, 10);
+
             } finally {
-                btn.disabled = false;
-                btn.textContent = 'Sign In';
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
             }
         });
 
-        // Check if already logged in
-        if (localStorage.getItem('jwt_token')) {
-            window.location.href = '/templates/index.html';
-        }
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                20%, 60% { transform: translateX(-10px); }
+                40%, 80% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 
