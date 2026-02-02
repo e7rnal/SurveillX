@@ -1,192 +1,218 @@
 #!/usr/bin/env python3
 """
-GStreamer-based WebRTC Streaming Client
-Uses GStreamer pipeline directly for better WSL compatibility
+SurveillX GStreamer WebSocket Client
+Uses python-socketio with GStreamer for low-latency streaming
 """
 import asyncio
-import argparse
 import base64
 import logging
 import sys
 import time
 import subprocess
+import tempfile
+import os
 
 try:
-    import aiohttp
-except ImportError:
-    print("Installing aiohttp...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "aiohttp"])
-    import aiohttp
+    import socketio
+    import cv2
+except ImportError as e:
+    print(f"Missing package: {e}")
+    print("Install: pip3 install python-socketio[asyncio_client] opencv-python-headless aiohttp")
+    sys.exit(1)
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Check for GStreamer
-def check_gstreamer():
-    result = subprocess.run(['which', 'gst-launch-1.0'], capture_output=True)
-    if result.returncode != 0:
-        print("❌ GStreamer not found!")
-        print("\nInstall with:")
-        print("sudo apt install gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad")
-        sys.exit(1)
-    print("✅ GStreamer found")
 
-class GStreamerClient:
-    """Stream camera using GStreamer + WebSocket"""
+class SocketIOClient:
+    """Stream webcam to server via Socket.IO"""
     
-    def __init__(self, server_url: str, camera: int = 0):
+    def __init__(self, server_url: str, camera: int = 0, quality: int = 70, fps: int = 30):
         self.server_url = server_url.rstrip('/')
         self.camera = camera
-        self.process = None
+        self.quality = quality
+        self.fps = fps
+        self.cap = None
+        self.sio = None
         self.running = False
+        self.frame_count = 0
+        self.bytes_sent = 0
+        self.start_time = None
         
-    async def test_connection(self):
-        """Test server connection"""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.server_url}/health", timeout=aiohttp.ClientTimeout(total=5)) as resp:
-                    if resp.status == 200:
-                        logger.info("✅ Server connection OK")
-                        return True
-        except Exception as e:
-            logger.error(f"❌ Cannot reach server: {e}")
-        return False
+    def init_camera(self):
+        """Initialize webcam with low-latency settings"""
+        logger.info(f"Opening camera /dev/video{self.camera}...")
+        
+        # Use GStreamer backend for better performance
+        gst_pipeline = f"v4l2src device=/dev/video{self.camera} ! video/x-raw,width=640,height=480,framerate={self.fps}/1 ! videoconvert ! appsink"
+        
+        self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+        
+        if not self.cap.isOpened():
+            logger.warning("GStreamer backend failed, trying V4L2...")
+            self.cap = cv2.VideoCapture(self.camera, cv2.CAP_V4L2)
+        
+        if not self.cap.isOpened():
+            logger.warning("V4L2 backend failed, trying default...")
+            self.cap = cv2.VideoCapture(self.camera)
+        
+        if not self.cap.isOpened():
+            logger.error("Cannot open camera!")
+            return False
+        
+        # Low-latency settings
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FPS, self.fps)
+        
+        # Read one frame to verify
+        ret, frame = self.cap.read()
+        if ret:
+            logger.info(f"✅ Camera ready: {frame.shape[1]}x{frame.shape[0]}")
+            return True
+        else:
+            logger.error("Camera opened but can't read frames")
+            return False
     
-    async def stream_with_gstreamer(self):
-        """Stream using GStreamer pipeline directly"""
-        logger.info("Starting GStreamer stream...")
+    async def connect(self):
+        """Connect to server via Socket.IO"""
+        logger.info(f"Connecting to {self.server_url}...")
         
-        # GStreamer pipeline that outputs JPEG frames to stdout
-        pipeline = f"""
-        gst-launch-1.0 -q \
-            v4l2src device=/dev/video{self.camera} ! \
-            video/x-raw,width=640,height=480,framerate=30/1 ! \
-            videoconvert ! \
-            jpegenc quality=70 ! \
-            filesink location=/dev/stdout
-        """
-        
-        logger.info(f"Pipeline: v4l2src -> jpegenc -> WebSocket")
-        
-        self.process = await asyncio.create_subprocess_shell(
-            pipeline.strip(),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+        self.sio = socketio.AsyncClient(
+            reconnection=True,
+            reconnection_attempts=10,
+            logger=False
         )
         
-        self.running = True
-        frame_count = 0
-        start_time = time.time()
+        @self.sio.event
+        async def connect():
+            logger.info("✅ Socket.IO connected!")
         
-        # Read JPEG frames from GStreamer and send via HTTP
-        buffer = b''
+        @self.sio.event
+        async def disconnect():
+            logger.warning("Disconnected from server")
+            self.running = False
+        
+        @self.sio.event
+        async def connect_error(error):
+            logger.error(f"Connection error: {error}")
+        
+        try:
+            await self.sio.connect(
+                self.server_url,
+                namespaces=['/stream'],
+                transports=['websocket']
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Connection failed: {e}")
+            return False
+    
+    async def stream(self):
+        """Main streaming loop"""
+        logger.info(f"Streaming at {self.fps} FPS, quality {self.quality}%")
+        logger.info("Press Ctrl+C to stop")
+        
+        self.running = True
+        self.start_time = time.time()
+        frame_interval = 1.0 / self.fps
+        last_stats = time.time()
         
         while self.running:
-            try:
-                chunk = await asyncio.wait_for(
-                    self.process.stdout.read(8192),
-                    timeout=2.0
-                )
-                
-                if not chunk:
-                    break
-                
-                buffer += chunk
-                
-                # Look for JPEG start/end markers
-                while True:
-                    start = buffer.find(b'\xff\xd8')  # JPEG start
-                    if start == -1:
-                        break
-                    
-                    end = buffer.find(b'\xff\xd9', start + 2)  # JPEG end
-                    if end == -1:
-                        break
-                    
-                    # Extract complete JPEG
-                    jpeg_data = buffer[start:end + 2]
-                    buffer = buffer[end + 2:]
-                    
-                    # Send frame to server
-                    await self.send_frame(jpeg_data)
-                    
-                    frame_count += 1
-                    if frame_count % 30 == 0:
-                        elapsed = time.time() - start_time
-                        fps = frame_count / elapsed
-                        logger.info(f"Streaming: {fps:.1f} fps | {frame_count} frames")
-                        
-            except asyncio.TimeoutError:
-                logger.warning("No data from camera, retrying...")
-                continue
-            except Exception as e:
-                logger.error(f"Error: {e}")
-                break
-    
-    async def send_frame(self, jpeg_data: bytes):
-        """Send JPEG frame to server via HTTP"""
-        try:
-            encoded = base64.b64encode(jpeg_data).decode('utf-8')
+            loop_start = time.time()
             
-            async with aiohttp.ClientSession() as session:
-                await session.post(
-                    f"{self.server_url}/api/stream/frame",
-                    json={
-                        'frame': encoded,
-                        'timestamp': time.time(),
-                        'camera_id': 'main'
-                    },
-                    timeout=aiohttp.ClientTimeout(total=1)
-                )
-        except Exception as e:
-            pass  # Don't log every failed frame
+            # Capture frame
+            ret, frame = self.cap.read()
+            if not ret:
+                await asyncio.sleep(0.01)
+                continue
+            
+            # Encode to JPEG
+            encode_params = [cv2.IMWRITE_JPEG_QUALITY, self.quality]
+            _, buffer = cv2.imencode('.jpg', frame, encode_params)
+            frame_b64 = base64.b64encode(buffer).decode('utf-8')
+            
+            # Send via Socket.IO
+            try:
+                await self.sio.emit('frame', {
+                    'frame': frame_b64,
+                    'timestamp': time.time(),
+                    'camera_id': 'main'
+                }, namespace='/stream')
+                
+                self.frame_count += 1
+                self.bytes_sent += len(frame_b64)
+                
+            except Exception as e:
+                logger.warning(f"Send error: {e}")
+                await asyncio.sleep(0.1)
+            
+            # Stats every 5 seconds
+            now = time.time()
+            if now - last_stats >= 5:
+                elapsed = now - self.start_time
+                fps = self.frame_count / elapsed
+                mbps = (self.bytes_sent * 8 / 1_000_000) / elapsed
+                logger.info(f"📊 {fps:.1f} fps | {mbps:.2f} Mbps | {self.frame_count} frames")
+                last_stats = now
+            
+            # FPS control
+            elapsed = time.time() - loop_start
+            sleep_time = frame_interval - elapsed
+            if sleep_time > 0:
+                await asyncio.sleep(sleep_time)
     
     async def stop(self):
-        """Stop streaming"""
+        """Cleanup"""
+        logger.info("Stopping...")
         self.running = False
-        if self.process:
-            self.process.terminate()
-            await self.process.wait()
+        
+        if self.cap:
+            self.cap.release()
+        
+        if self.sio:
+            await self.sio.disconnect()
+        
+        if self.start_time and self.frame_count:
+            elapsed = time.time() - self.start_time
+            logger.info(f"Sent {self.frame_count} frames in {elapsed:.1f}s ({self.frame_count/elapsed:.1f} fps)")
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="GStreamer Streaming Client")
-    parser.add_argument("--server", default="http://localhost:5000")
-    parser.add_argument("--camera", type=int, default=0)
+    import argparse
+    parser = argparse.ArgumentParser(description="SurveillX Streaming Client")
+    parser.add_argument("--server", default="http://65.0.87.179:5000", help="Server URL")
+    parser.add_argument("--camera", type=int, default=0, help="Camera index")
+    parser.add_argument("--quality", type=int, default=70, help="JPEG quality (30-95)")
+    parser.add_argument("--fps", type=int, default=30, help="Target FPS")
     args = parser.parse_args()
     
-    print("=" * 50)
-    print("  SurveillX GStreamer Client")
-    print("=" * 50)
-    print(f"  Server: {args.server}")
-    print(f"  Camera: /dev/video{args.camera}")
-    print("=" * 50)
+    print("=" * 55)
+    print("  🎥 SurveillX Streaming Client")
+    print("=" * 55)
+    print(f"  Server:  {args.server}")
+    print(f"  Camera:  /dev/video{args.camera}")
+    print(f"  Quality: {args.quality}%")
+    print(f"  FPS:     {args.fps}")
+    print("=" * 55)
     
-    check_gstreamer()
-    
-    client = GStreamerClient(args.server, args.camera)
-    
-    # Test connection first
-    if not await client.test_connection():
-        return
-    
-    # Test camera with GStreamer
-    print("\n🎥 Testing camera with GStreamer...")
-    test_cmd = f"gst-launch-1.0 -v v4l2src device=/dev/video{args.camera} num-buffers=1 ! fakesink"
-    result = subprocess.run(test_cmd.split(), capture_output=True, timeout=5)
-    
-    if result.returncode != 0:
-        print(f"❌ Camera test failed!")
-        print(f"Try: sudo chmod 666 /dev/video{args.camera}")
-        print(f"Or try --camera 1")
-        return
-    
-    print("✅ Camera test passed!")
+    client = SocketIOClient(args.server, args.camera, args.quality, args.fps)
     
     try:
-        await client.stream_with_gstreamer()
+        if not client.init_camera():
+            print("\n❌ Camera failed to open")
+            print("Try: sudo chmod 666 /dev/video0")
+            return
+        
+        if not await client.connect():
+            print("\n❌ Server connection failed")
+            return
+        
+        await client.stream()
+        
     except KeyboardInterrupt:
-        print("\n👋 Stopping...")
+        print("\n\n👋 Stopping...")
     finally:
         await client.stop()
 
