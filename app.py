@@ -5,7 +5,7 @@ Smart Surveillance System with Face Recognition and Behavior Detection
 
 import os
 import logging
-from flask import Flask, jsonify
+from flask import Flask, jsonify, redirect, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
@@ -57,9 +57,30 @@ app.register_blueprint(stats_bp, url_prefix='/api/stats')
 app.register_blueprint(enrollment_bp, url_prefix='/api/enrollment')
 app.register_blueprint(clips_bp, url_prefix='/api/clips')
 
-# Root route
+# Frontend routes
 @app.route('/')
-def index():
+def root():
+    return redirect('/templates/login.html')
+
+@app.route('/templates/login.html')
+def login_page():
+    return send_from_directory('templates', 'login.html')
+
+@app.route('/templates/index.html')
+def index_page():
+    return send_from_directory('templates', 'index.html')
+
+@app.route('/templates/register.html')
+def register_page():
+    return send_from_directory('templates', 'register.html')
+
+@app.route('/templates/enroll.html')
+def enroll_page():
+    return send_from_directory('templates', 'register.html')
+
+# API root
+@app.route('/api')
+def api_info():
     return jsonify({
         "message": "SurveillX Backend API",
         "version": "1.0.0",
