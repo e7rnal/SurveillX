@@ -221,12 +221,16 @@ class SurveillXApp {
             <div class="dashboard-row">
                 <div class="card">
                     <h3><i class="fa-solid fa-chart-line"></i> Attendance Trend (Last 7 Days)</h3>
-                    <canvas id="attendance-chart" height="200"></canvas>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="attendance-chart"></canvas>
+                    </div>
                 </div>
                 
                 <div class="card">
                     <h3><i class="fa-solid fa-chart-pie"></i> Alert Distribution</h3>
-                    <canvas id="alerts-chart" height="200"></canvas>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="alerts-chart"></canvas>
+                    </div>
                 </div>
             </div>
             

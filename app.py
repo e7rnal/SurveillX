@@ -47,6 +47,7 @@ from api.cameras import cameras_bp
 from api.stats import stats_bp
 from api.enrollment import enrollment_bp
 from api.clips import clips_bp
+from api.webrtc import webrtc_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(students_bp, url_prefix='/api/students')
@@ -56,6 +57,7 @@ app.register_blueprint(cameras_bp, url_prefix='/api/cameras')
 app.register_blueprint(stats_bp, url_prefix='/api/stats')
 app.register_blueprint(enrollment_bp, url_prefix='/api/enrollment')
 app.register_blueprint(clips_bp, url_prefix='/api/clips')
+app.register_blueprint(webrtc_bp, url_prefix='/webrtc')
 
 # Frontend routes
 @app.route('/')
