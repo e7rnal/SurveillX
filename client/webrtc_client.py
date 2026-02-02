@@ -123,8 +123,28 @@ class WebRTCStreamer:
         """Establish WebRTC connection to server"""
         logger.info(f"Connecting to {self.server_url}...")
         
-        # Create peer connection
-        self.pc = RTCPeerConnection()
+        # ICE servers configuration with TURN for NAT traversal
+        ice_servers = [
+            # Google STUN servers
+            {"urls": ["stun:stun.l.google.com:19302"]},
+            {"urls": ["stun:stun1.l.google.com:19302"]},
+            # Our TURN server (required for NAT traversal)
+            {
+                "urls": [
+                    "turn:65.0.87.179:3478?transport=udp",
+                    "turn:65.0.87.179:3478?transport=tcp"
+                ],
+                "username": "surveillx",
+                "credential": "surveillx2026"
+            }
+        ]
+        
+        # Create peer connection with ICE configuration
+        from aiortc import RTCConfiguration, RTCIceServer
+        config = RTCConfiguration(
+            iceServers=[RTCIceServer(**server) for server in ice_servers]
+        )
+        self.pc = RTCPeerConnection(configuration=config)
         
         @self.pc.on("connectionstatechange")
         async def on_connectionstatechange():
