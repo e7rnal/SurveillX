@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SurveillX - Student Enrollment</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo i {
+            font-size: 2.5rem;
+            color: #6366f1;
+        }
+
+        .logo span {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        /* Camera Section */
+        .camera-section {
+            text-align: center;
+        }
+
+        .camera-container {
+            position: relative;
+            background: #0f172a;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            aspect-ratio: 4/3;
+        }
+
+        #video,
+        #canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .camera-overlay i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #64748b;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Photo Grid */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .photo-slot {
+            aspect-ratio: 1;
+            background: #0f172a;
+            border-radius: 0.5rem;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .photo-slot.filled {
+            border-style: solid;
+            border-color: #22c55e;
+        }
+
+        .photo-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-slot .number {
+            color: #64748b;
+            font-weight: bold;
+        }
+
+        .photo-slot .remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(239, 68, 68, 0.9);
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.5rem;
+        }
+
+        /* Progress */
+        .progress-bar {
+            background: #0f172a;
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #22c55e);
+            transition: width 0.3s;
+        }
+
+        /* Messages */
+        .message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        /* Success State */
+        .success-state {
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .success-state i {
+            font-size: 4rem;
+            color: #22c55e;
+            margin-bottom: 1.5rem;
+        }
+
+        .success-state h2 {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>SurveillX</span>
+            </div>
+            <p class="subtitle">Student Face Enrollment</p>
+        </header>
+
+        <div id="message" class="message"></div>
+
+        <!-- Student Info Form -->
+        <div class="card" id="info-section">
+            <h2><i class="fa-solid fa-user"></i> Student Information</h2>
+
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="student-name" placeholder="Enter your full name" required>
+            </div>
+
+            <div class="form-group">
+                <label>Roll Number</label>
+                <input type="text" id="roll-number" placeholder="Enter roll number (pre-filled if provided)">
+            </div>
+
+            <div class="form-group">
+                <label>Class</label>
+                <input type="text" id="student-class" placeholder="e.g., BCA - II">
+            </div>
+
+            <div class="form-group">
+                <label>Contact Number</label>
+                <input type="tel" id="contact" placeholder="+91 9876543210">
+            </div>
+        </div>
+
+        <!-- Camera/Photo Section -->
+        <div class="card" id="camera-section">
+            <h2><i class="fa-solid fa-camera"></i> Capture Your Photos</h2>
+            <p class="hint" style="margin-bottom: 1rem;">Take 5 photos of your face from slightly different angles</p>
+
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+                <div class="camera-overlay" id="camera-overlay">
+                    <i class="fa-solid fa-camera"></i>
+                    <span>Click "Start Camera" to begin</span>
+                </div>
+            </div>
+
+            <div class="camera-controls">
+                <button class="btn btn-primary" id="start-camera">
+                    <i class="fa-solid fa-video"></i> Start Camera
+                </button>
+                <button class="btn btn-success" id="capture-btn" disabled>
+                    <i class="fa-solid fa-camera"></i> Capture Photo
+                </button>
+            </div>
+
+            <div class="photo-grid" id="photo-grid">
+                <div class="photo-slot"><span class="number">1</span></div>
+                <div class="photo-slot"><span class="number">2</span></div>
+                <div class="photo-slot"><span class="number">3</span></div>
+                <div class="photo-slot"><span class="number">4</span></div>
+                <div class="photo-slot"><span class="number">5</span></div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <p class="hint" id="photo-count">0 of 5 photos captured</p>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="btn btn-primary" id="submit-btn" style="width: 100%; padding: 1rem;" disabled>
+            <i class="fa-solid fa-paper-plane"></i> Submit Enrollment
+        </button>
+
+        <!-- Success State (hidden initially) -->
+        <div class="card success-state" id="success-section" style="display: none;">
+            <i class="fa-solid fa-circle-check"></i>
+            <h2>Enrollment Submitted!</h2>
+            <p>Your enrollment request has been submitted and is pending approval.</p>
+            <p class="hint" style="margin-top: 1rem;">You will be notified once your enrollment is approved.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        // Get token from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const prefillRollNo = urlParams.get('roll_no');
+
+        // State
+        let photos = [];
+        let videoStream = null;
+
+        // Elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const overlay = document.getElementById('camera-overlay');
+        const startBtn = document.getElementById('start-camera');
+        const captureBtn = document.getElementById('capture-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const photoGrid = document.getElementById('photo-grid');
+        const progressFill = document.getElementById('progress-fill');
+        const photoCount = document.getElementById('photo-count');
+        const message = document.getElementById('message');
+
+        // Pre-fill roll number if provided
+        if (prefillRollNo) {
+            document.getElementById('roll-number').value = prefillRollNo;
+        }
+
+        // Start camera
+        startBtn.addEventListener('click', async () => {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: 640, height: 480 }
+                });
+                video.srcObject = videoStream;
+                overlay.style.display = 'none';
+                captureBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fa-solid fa-refresh"></i> Restart Camera';
+            } catch (err) {
+                showMessage('Camera access denied. Please allow camera access.', 'error');
+            }
+        });
+
+        // Capture photo
+        captureBtn.addEventListener('click', () => {
+            if (photos.length >= 5) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            photos.push(dataUrl);
+
+            updatePhotoGrid();
+        });
+
+        function updatePhotoGrid() {
+            const slots = photoGrid.querySelectorAll('.photo-slot');
+
+            slots.forEach((slot, i) => {
+                if (photos[i]) {
+                    slot.innerHTML = `
+                        <img src="${photos[i]}" alt="Photo ${i + 1}">
+                        <button class="remove-btn" onclick="removePhoto(${i})">&times;</button>
+                    `;
+                    slot.classList.add('filled');
+                } else {
+                    slot.innerHTML = `<span class="number">${i + 1}</span>`;
+                    slot.classList.remove('filled');
+                }
+            });
+
+            const percent = (photos.length / 5) * 100;
+            progressFill.style.width = percent + '%';
+            photoCount.textContent = `${photos.length} of 5 photos captured`;
+
+            submitBtn.disabled = photos.length < 5 || !document.getElementById('student-name').value;
+        }
+
+        window.removePhoto = function (index) {
+            photos.splice(index, 1);
+            updatePhotoGrid();
+        };
+
+        // Enable submit when name is filled
+        document.getElementById('student-name').addEventListener('input', () => {
+            submitBtn.disabled = photos.length < 5 || !document.getElementById('student-name').value;
+        });
+
+        // Submit enrollment
+        submitBtn.addEventListener('click', async () => {
+            const name = document.getElementById('student-name').value;
+            const rollNo = document.getElementById('roll-number').value;
+            const studentClass = document.getElementById('student-class').value;
+            const contact = document.getElementById('contact').value;
+
+            if (!name || photos.length < 5) {
+                showMessage('Please fill name and capture 5 photos', 'error');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/enrollment/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        name: name,
+                        roll_no: rollNo,
+                        class: studentClass,
+                        contact_no: contact,
+                        photos: photos
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Stop camera
+                    if (videoStream) {
+                        videoStream.getTracks().forEach(track => track.stop());
+                    }
+
+                    // Show success
+                    document.getElementById('info-section').style.display = 'none';
+                    document.getElementById('camera-section').style.display = 'none';
+                    submitBtn.style.display = 'none';
+                    document.getElementById('success-section').style.display = 'block';
+                } else {
+                    showMessage(data.error || 'Submission failed', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Enrollment';
+                }
+            } catch (err) {
+                showMessage('Network error. Please try again.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Enrollment';
+            }
+        });
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = 'message ' + type;
+            message.style.display = 'block';
+            setTimeout(() => { message.style.display = 'none'; }, 5000);
+        }
+    </script>
+</body>
+
+</html>

@@ -76,31 +76,39 @@ def verify_token(token):
 
 @enrollment_bp.route('/submit', methods=['POST'])
 def submit_enrollment():
-    """Submit enrollment data"""
+    """Submit enrollment data with photos"""
     try:
         data = request.get_json()
         token = data.get('token')
+        name = data.get('name')
+        photos = data.get('photos', [])
         
-        if not token:
-            return jsonify({"error": "Token is required"}), 400
+        if not name:
+            return jsonify({"error": "Name is required"}), 400
         
-        # Verify token
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        if len(photos) < 5:
+            return jsonify({"error": "At least 5 photos required"}), 400
+        
         db = current_app.db
-        token_data = db.get_enrollment_token(token_hash)
+        token_data = None
         
-        if not token_data or token_data['used']:
-            return jsonify({"error": "Invalid or used token"}), 400
+        # Verify token if provided
+        if token:
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            token_data = db.get_enrollment_token(token_hash)
+            
+            if not token_data or token_data['used']:
+                return jsonify({"error": "Invalid or used token"}), 400
         
         # Create pending enrollment
         enrollment_id = db.create_pending_enrollment(
-            token_id=token_data['id'],
-            name=data['name'],
-            roll_no=data.get('roll_no') or token_data['roll_no'],
+            token_id=token_data['id'] if token_data else None,
+            name=name,
+            roll_no=data.get('roll_no') or (token_data['roll_no'] if token_data else None),
             contact_no=data.get('contact_no'),
             class_name=data.get('class'),
-            face_encoding=data.get('face_encoding'),
-            sample_images=data.get('sample_images', [])
+            face_encoding=None,  # Will be generated during approval
+            sample_images=photos  # Store base64 photos for later processing
         )
         
         return jsonify({

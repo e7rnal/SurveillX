@@ -1,110 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SurveillX | Smart Surveillance</title>
-
-    <!-- Auth Check -->
-    <script>
-        // Check authentication immediately (blocking)
-        if (sessionStorage.getItem('surveillx_auth') !== 'true') {
-            window.location.replace('login.html');
-        }
-
-        // Logout function
-        function logout() {
-            sessionStorage.removeItem('surveillx_auth');
-            sessionStorage.removeItem('surveillx_user');
-            window.location.href = 'login.html';
-        }
-    </script>
-
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- CSS -->
+    <title>SurveillX - Smart Surveillance System</title>
     <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-
 <body>
     <div class="app-container">
-        <!-- Sidebar Navigation -->
+        <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="brand">
-                <i class="fa-solid fa-eye brand-icon"></i>
-                <span class="brand-text">SurveillX</span>
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>SurveillX</span>
+                </div>
             </div>
-
-            <nav class="nav-menu">
-                <a href="#dashboard" class="nav-item active" data-view="dashboard">
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-link active" data-page="dashboard">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="#live" class="nav-item" data-view="live">
+                <a href="#" class="nav-link" data-page="live">
                     <i class="fa-solid fa-video"></i>
                     <span>Live Monitor</span>
                 </a>
-                <a href="#attendance" class="nav-item" data-view="attendance">
-                    <i class="fa-solid fa-user-check"></i>
+                <a href="#" class="nav-link" data-page="attendance">
+                    <i class="fa-solid fa-clipboard-check"></i>
                     <span>Attendance</span>
                 </a>
-                <a href="#alerts" class="nav-item" data-view="alerts">
+                <a href="#" class="nav-link" data-page="alerts">
                     <i class="fa-solid fa-bell"></i>
-                    <span>Alerts Log</span>
+                    <span>Alerts</span>
                 </a>
-                <a href="#students" class="nav-item" data-view="students">
+                <a href="#" class="nav-link" data-page="students">
                     <i class="fa-solid fa-users"></i>
                     <span>Students</span>
                 </a>
-                <a href="#settings" class="nav-item" data-view="settings">
+                <a href="#" class="nav-link" data-page="settings">
                     <i class="fa-solid fa-gear"></i>
                     <span>Settings</span>
                 </a>
             </nav>
-
-            <div class="user-profile">
-                <div class="avatar">A</div>
+            
+            <div class="sidebar-footer">
                 <div class="user-info">
-                    <span class="name">Admin User</span>
-                    <span class="role">System Administrator</span>
+                    <div class="avatar">A</div>
+                    <div class="user-details">
+                        <div class="user-name">Admin</div>
+                        <div class="user-role">Administrator</div>
+                    </div>
                 </div>
-                <button onclick="logout()"
-                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0.5rem; margin-left:auto;"
-                    title="Logout">
-                    <i class="fa-solid fa-right-from-bracket"></i>
+                <button id="logout-btn" class="btn-icon" title="Logout">
+                    <i class="fa-solid fa-sign-out-alt"></i>
                 </button>
-
             </div>
         </aside>
-
-        <!-- Main Content Area -->
+        
+        <!-- Main Content -->
         <main class="main-content">
-            <header class="top-bar">
+            <header class="top-header">
                 <h1 id="page-title">Dashboard Overview</h1>
-                <div class="system-status">
-                    <span class="status-indicator online"></span>
-                    <span class="status-text">System Online</span>
+                <div class="header-actions">
+                    <div class="system-status">
+                        <span class="status-dot online"></span>
+                        <span>System Online</span>
+                    </div>
+                    <div class="current-time" id="current-time"></div>
                 </div>
             </header>
-
-            <!-- Dynamic Content Container -->
-            <div id="view-container" class="view-content">
-                <!-- Content injected via JS -->
+            
+            <div class="content-area" id="main-content">
+                <div class="loading-state">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span>Loading...</span>
+                </div>
             </div>
         </main>
     </div>
-
+    
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../static/js/main.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="../static/js/api.js"></script>
+    <script src="../static/js/app.js"></script>
+    <script>
+        // Update time
+        function updateTime() {
+            const el = document.getElementById('current-time');
+            if (el) {
+                el.textContent = new Date().toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
 </body>
-
 </html>

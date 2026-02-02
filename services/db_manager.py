@@ -134,7 +134,8 @@ class DBManager:
     def get_attendance(self, date=None, student_id=None, limit=100):
         """Get attendance records"""
         query = """
-            SELECT a.*, s.name, s.roll_no, s.class
+            SELECT a.id, a.student_id, a.timestamp, 
+                   s.name as student_name, s.roll_no, s.class
             FROM attendance_logs a
             JOIN students s ON a.student_id = s.id
         """

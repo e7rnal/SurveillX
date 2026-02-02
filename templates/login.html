@@ -4,352 +4,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | SurveillX Admin</title>
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- CSS -->
-    <link rel="stylesheet" href="../static/css/style.css">
-
+    <title>SurveillX - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            padding: 1rem;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
         }
 
         .login-card {
-            width: 100%;
-            max-width: 400px;
-            background-color: var(--bg-card);
-            backdrop-filter: blur(12px);
-            border: var(--glass-border);
-            border-radius: 1.5rem;
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 1rem;
             padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.5s ease-out;
+            backdrop-filter: blur(10px);
         }
 
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .login-brand {
+        .logo {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.75rem;
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 0.5rem;
+            margin-bottom: 2rem;
         }
 
-        .login-subtitle {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
+        .logo i {
+            font-size: 2.5rem;
+            color: #6366f1;
+        }
+
+        .logo span {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
-            position: relative;
+            margin-bottom: 1.25rem;
         }
 
         .form-group label {
             display: block;
+            color: #94a3b8;
+            font-size: 0.875rem;
             margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
             font-weight: 500;
         }
 
-        .form-input {
-            width: 100%;
-            padding: 0.75rem 1rem 0.75rem 2.5rem;
-            background-color: rgba(15, 23, 42, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.75rem;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 1rem;
-            transition: var(--transition);
+        .input-wrapper {
+            position: relative;
         }
 
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-
-        .input-icon {
+        .input-wrapper i {
             position: absolute;
             left: 1rem;
-            top: 2.35rem;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 2.75rem;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .input-wrapper input::placeholder {
+            color: #4b5563;
         }
 
         .btn-login {
             width: 100%;
-            padding: 0.85rem;
-            background-color: var(--accent);
-            color: white;
+            padding: 1rem;
+            background: #6366f1;
             border: none;
-            border-radius: 0.75rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: var(--transition);
-            font-family: inherit;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 1rem;
         }
 
         .btn-login:hover {
-            background-color: var(--accent-hover);
-            transform: translateY(-1px);
+            background: #4f46e5;
         }
 
         .btn-login:active {
-            transform: translateY(0);
+            transform: scale(0.98);
         }
 
-        .error-msg {
-            background-color: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-            padding: 0.75rem;
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 0.75rem 1rem;
             border-radius: 0.5rem;
-            font-size: 0.85rem;
-            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
             display: none;
-            align-items: center;
-            gap: 0.5rem;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .footer-text {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.8rem;
+            margin-top: 2rem;
         }
     </style>
 </head>
 
 <body>
-    <div class="login-card">
-        <div class="login-header">
-            <div class="login-brand">
-                <i class="fa-solid fa-eye brand-icon"></i>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i>
                 <span>SurveillX</span>
             </div>
-            <p class="login-subtitle" id="formTitle">Secure Admin Panel Access</p>
+
+            <p class="subtitle">Smart Surveillance System</p>
+
+            <div id="error-message" class="error-message"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="username" placeholder="Enter username" autocomplete="username" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="password" placeholder="Enter password"
+                            autocomplete="current-password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login" id="login-btn">
+                    Sign In
+                </button>
+            </form>
+
+            <p class="footer-text">Secured by SurveillX © 2026</p>
         </div>
-
-        <!-- Login Form -->
-        <form id="loginForm">
-            <div id="errorMsg" class="error-msg">
-                <i class="fa-solid fa-circle-exclamation"></i>
-                <span>Invalid username or password</span>
-            </div>
-
-            <div class="form-group">
-                <label for="username">Username</label>
-                <i class="fa-solid fa-user input-icon"></i>
-                <input type="text" id="username" class="form-input" placeholder="Enter admin username" required
-                    autocomplete="off">
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password</label>
-                <i class="fa-solid fa-lock input-icon"></i>
-                <input type="password" id="password" class="form-input" placeholder="Enter secure password" required>
-            </div>
-
-            <button type="submit" class="btn-login">
-                <span>Login to Dashboard</span>
-                <i class="fa-solid fa-arrow-right"></i>
-            </button>
-
-            <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
-                Don't have an account? <a href="#" id="showRegister"
-                    style="color: var(--accent); text-decoration: none; font-weight: 500;">Register Admin</a>
-            </div>
-        </form>
-
-        <!-- Register Form (Hidden by default) -->
-        <form id="registerForm" style="display: none;">
-            <div id="regErrorMsg" class="error-msg">
-                <i class="fa-solid fa-circle-exclamation"></i>
-                <span>Passwords do not match</span>
-            </div>
-
-            <div class="form-group">
-                <label for="regUsername">New Username</label>
-                <i class="fa-solid fa-user input-icon"></i>
-                <input type="text" id="regUsername" class="form-input" placeholder="Choose username" required
-                    autocomplete="off">
-            </div>
-
-            <div class="form-group">
-                <label for="regPassword">Password</label>
-                <i class="fa-solid fa-lock input-icon"></i>
-                <input type="password" id="regPassword" class="form-input" placeholder= "Choose password" required>
-            </div>
-
-            <div class="form-group">
-                <label for="regConfirmPassword">Confirm Password</label>
-                <i class="fa-solid fa-check-double input-icon"></i>
-                <input type="password" id="regConfirmPassword" class="form-input" placeholder="Confirm password"
-                    required>
-            </div>
-
-            <button type="submit" class="btn-login" style="background-color: var(--success);">
-                <span>Create Account</span>
-                <i class="fa-solid fa-user-plus"></i>
-            </button>
-
-            <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
-                Already have an account? <a href="#" id="showLogin"
-                    style="color: var(--accent); text-decoration: none; font-weight: 500;">Login</a>
-            </div>
-        </form>
     </div>
 
     <script>
-        // Check if already logged in
-        if (sessionStorage.getItem('surveillx_auth') === 'true') {
-            window.location.href = 'index.html';
-        }
+        const API_BASE = window.location.origin;
 
-        // DOM Elements
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        const showRegisterBtn = document.getElementById('showRegister');
-        const showLoginBtn = document.getElementById('showLogin');
-        const formTitle = document.getElementById('formTitle');
-
-        // Toggle Views
-        showRegisterBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-            registerForm.style.animation = 'fadeIn 0.5s ease-out';
-            formTitle.textContent = 'Create New Admin Account';
-        });
-
-        showLoginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            registerForm.style.display = 'none';
-            loginForm.style.display = 'block';
-            loginForm.style.animation = 'fadeIn 0.5s ease-out';
-            formTitle.textContent = 'Secure Admin Panel Access';
-        });
-
-        // Handle Registration
-        registerForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            const username = document.getElementById('regUsername').value;
-            const password = document.getElementById('regPassword').value;
-            const confirm = document.getElementById('regConfirmPassword').value;
-            const errorMsg = document.getElementById('regErrorMsg');
-
-            if (password !== confirm) {
-                errorMsg.textContent = "Passwords do not match";
-                errorMsg.style.display = 'flex';
-                return;
-            }
-
-            if (localStorage.getItem('admin_' + username)) {
-                errorMsg.textContent = "Username already exists";
-                errorMsg.style.display = 'flex';
-                return;
-            }
-
-            // Save credentials
-            localStorage.setItem('admin_' + username, JSON.stringify({
-                username: username,
-                password: password
-            }));
-
-            alert('Account created successfully! Please login.');
-
-            // Switch to login
-            document.getElementById('username').value = username;
-            showLoginBtn.click();
-        });
-
-        // Handle Login
-        loginForm.addEventListener('submit', function (e) {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('errorMsg');
-            const btn = loginForm.querySelector('.btn-login');
+            const errorEl = document.getElementById('error-message');
+            const btn = document.getElementById('login-btn');
 
-            // Reset error
-            errorMsg.style.display = 'none';
-
-            // Loading state
-            const originalBtnContent = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
-            btn.style.opacity = '0.7';
             btn.disabled = true;
+            btn.textContent = 'Signing in...';
+            errorEl.style.display = 'none';
 
-            // Simulate network delay for realism
-            setTimeout(() => {
-                let isValid = false;
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-                // Check stored credentials first
-                const storedUser = localStorage.getItem('admin_' + username);
-                if (storedUser) {
-                    const creds = JSON.parse(storedUser);
-                    if (creds.password === password) isValid = true;
-                }
+                const data = await response.json();
 
-                // Fallback to hardcoded demo credentials
-                if (username === 'admin' && password === 'admin123') isValid = true;
-
-                if (isValid) {
-                    // Set session
-                    sessionStorage.setItem('surveillx_auth', 'true');
-                    sessionStorage.setItem('surveillx_user', 'Admin User');
-
-                    // Redirect
-                    window.location.href = 'index.html';
+                if (response.ok && data.token) {
+                    localStorage.setItem('jwt_token', data.token);
+                    window.location.href = '/templates/index.html';
                 } else {
-                    // Show error
-                    errorMsg.style.display = 'flex';
-                    btn.innerHTML = originalBtnContent;
-                    btn.style.opacity = '1';
-                    btn.disabled = false;
-
-                    // Shake animation
-                    const card = document.querySelector('.login-card');
-                    card.style.transform = 'translateX(5px)';
-                    setTimeout(() => card.style.transform = 'translateX(-5px)', 50);
-                    setTimeout(() => card.style.transform = 'translateX(5px)', 100);
-                    setTimeout(() => card.style.transform = 'translateX(0)', 150);
+                    errorEl.textContent = data.error || 'Invalid credentials';
+                    errorEl.style.display = 'block';
                 }
-            }, 800);
+            } catch (error) {
+                errorEl.textContent = 'Connection error. Please try again.';
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            }
         });
+
+        // Check if already logged in
+        if (localStorage.getItem('jwt_token')) {
+            window.location.href = '/templates/index.html';
+        }
     </script>
 </body>
 

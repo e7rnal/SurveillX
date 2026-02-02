@@ -124,6 +124,14 @@ if __name__ == '__main__':
     logger.info("Starting SurveillX Backend...")
     logger.info(f"Server running on {Config.HOST}:{Config.PORT}")
     
+    # Register stream handler namespace
+    try:
+        from services.stream_handler import stream_handler
+        socketio.on_namespace(stream_handler)
+        logger.info("Stream handler registered")
+    except Exception as e:
+        logger.warning(f"Stream handler not loaded: {e}")
+    
     # Run with SocketIO
     socketio.run(
         app,
@@ -132,3 +140,4 @@ if __name__ == '__main__':
         debug=(Config.FLASK_ENV == 'development'),
         allow_unsafe_werkzeug=True
     )
+

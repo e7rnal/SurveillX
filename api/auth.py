@@ -31,7 +31,7 @@ def login():
                 "token": access_token,
                 "user": {
                     "username": user['username'],
-                    "role": user['role']
+                    "role": user.get('role', 'admin')  # Default to admin if role column missing
                 }
             })
         else:
@@ -39,3 +39,4 @@ def login():
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
