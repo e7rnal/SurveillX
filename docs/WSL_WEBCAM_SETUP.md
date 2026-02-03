@@ -101,7 +101,7 @@ After I create the client script:
 
 ```bash
 cd ~/surveillx-client
-python3 webrtc_client.py --server http://65.0.87.179:5000
+python3 webrtc_client.py --server http://surveillx.duckdns.org:5000
 ```
 
 ---

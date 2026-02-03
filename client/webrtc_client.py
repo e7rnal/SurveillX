@@ -131,8 +131,8 @@ class WebRTCStreamer:
             # Our TURN server (required for NAT traversal)
             {
                 "urls": [
-                    "turn:65.0.87.179:3478?transport=udp",
-                    "turn:65.0.87.179:3478?transport=tcp"
+                    "turn:surveillx.duckdns.org:3478?transport=udp",
+                    "turn:surveillx.duckdns.org:3478?transport=tcp"
                 ],
                 "username": "surveillx",
                 "credential": "surveillx2026"

@@ -8,7 +8,7 @@ SETUP (one time):
    pip install python-socketio[asyncio_client] opencv-python aiohttp
 
 USAGE:
-   python windows_client.py --server http://65.0.87.179:5000
+   python windows_client.py --server http://surveillx.duckdns.org:5000
 """
 import asyncio
 import base64
