@@ -78,7 +78,7 @@ def register_page():
 
 @app.route('/templates/enroll.html')
 def enroll_page():
-    return send_from_directory('templates', 'register.html')
+    return send_from_directory('templates', 'enroll.html')
 
 # API root
 @app.route('/api')
@@ -142,4 +142,3 @@ if __name__ == '__main__':
         debug=(Config.FLASK_ENV == 'development'),
         allow_unsafe_werkzeug=True
     )
-
