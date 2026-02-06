@@ -31,6 +31,8 @@ const API = {
         const url = `${this.baseUrl}${endpoint}`;
         const token = this.getToken();
 
+        console.log(`[API] Requesting: ${endpoint} | Token: ${token ? 'Present' : 'MISSING'}`);
+
         const config = {
             ...options,
             headers: {
@@ -45,9 +47,11 @@ const API = {
 
         try {
             const response = await fetch(url, config);
+            console.log(`[API] Response: ${response.status} for ${endpoint}`);
 
             // Handle 401 - redirect to login
             if (response.status === 401) {
+                console.warn('[API] 401 Unauthorized - clearing token and redirecting to login');
                 this.clearToken();
                 window.location.href = '/templates/login.html';
                 return null;
@@ -56,12 +60,13 @@ const API = {
             const data = await response.json();
 
             if (!response.ok) {
+                console.error(`[API] Error response:`, data);
                 throw new Error(data.error || data.message || 'Request failed');
             }
 
             return data;
         } catch (error) {
-            console.error(`API Error [${endpoint}]:`, error);
+            console.error(`[API] Request failed for ${endpoint}:`, error);
             throw error;
         }
     },

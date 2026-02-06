@@ -223,6 +223,18 @@ class DBManager:
         self.execute_query(query, fetch=False, commit=True)
         return True
     
+    def dismiss_alert(self, alert_id):
+        """Dismiss/resolve an alert by marking it as dismissed"""
+        query = "UPDATE alerts_logs SET dismissed = TRUE WHERE id = %s"
+        self.execute_query(query, (alert_id,), fetch=False, commit=True)
+        return True
+    
+    def delete_alert(self, alert_id):
+        """Delete an alert permanently"""
+        query = "DELETE FROM alerts_logs WHERE id = %s"
+        self.execute_query(query, (alert_id,), fetch=False, commit=True)
+        return True
+    
     # ==================== CAMERA OPERATIONS ====================
     
     def get_all_cameras(self):
