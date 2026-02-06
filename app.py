@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
+app.url_map.strict_slashes = False  # Allow both /api/alerts and /api/alerts/
 
 # Initialize extensions
 CORS(app, resources={r"/*": {"origins": "*"}})
