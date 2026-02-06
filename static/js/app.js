@@ -687,7 +687,8 @@ class SurveillXApp {
                                     <td>${s.class || '-'}</td>
                                     <td><span class="badge success">Active</span></td>
                                     <td>
-                                        <button class="btn-icon" title="View"><i class="fa-solid fa-eye"></i></button>
+                                        <button class="btn-icon" onclick="app.viewStudent(${s.id})" title="View Details"><i class="fa-solid fa-eye"></i></button>
+                                        <button class="btn-icon" onclick="app.editStudent(${s.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
                                         <button class="btn-icon danger" onclick="app.deleteStudent(${s.id})" title="Delete">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
@@ -797,9 +798,14 @@ class SurveillXApp {
                         <i class="fa-solid fa-filter"></i> Filter
                     </button>
                 </div>
-                <button class="btn secondary">
-                    <i class="fa-solid fa-download"></i> Export CSV
-                </button>
+                <div class="btn-group">
+                    <button class="btn secondary" id="export-attendance-csv">
+                        <i class="fa-solid fa-download"></i> Export CSV
+                    </button>
+                    <button class="btn secondary" id="mark-attendance-btn">
+                        <i class="fa-solid fa-plus"></i> Mark Attendance
+                    </button>
+                </div>
             </div>
             
             <div class="card">
@@ -813,6 +819,14 @@ class SurveillXApp {
 
         document.getElementById('filter-attendance').addEventListener('click', () => {
             this.loadAttendanceData();
+        });
+
+        document.getElementById('export-attendance-csv').addEventListener('click', () => {
+            this.exportAttendanceCSV();
+        });
+
+        document.getElementById('mark-attendance-btn').addEventListener('click', () => {
+            this.showMarkAttendanceModal();
         });
 
         await this.loadAttendanceData();
@@ -866,6 +880,160 @@ class SurveillXApp {
         }
     }
 
+    exportAttendanceCSV() {
+        const date = document.getElementById('attendance-date').value;
+        const table = document.querySelector('#attendance-content table');
+        if (!table) {
+            Toast.warning('No attendance records to export');
+            return;
+        }
+
+        // Build CSV content
+        let csv = 'Name,Roll No,Check-in Time,Status\n';
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const name = cells[0]?.querySelector('span')?.textContent || '';
+            const rollNo = cells[1]?.textContent || '';
+            const time = cells[2]?.textContent || '';
+            const status = cells[3]?.textContent?.trim() || '';
+            csv += `"${name}","${rollNo}","${time}","${status}"\n`;
+        });
+
+        // Download CSV
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance_${date}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        Toast.success('Attendance exported to CSV');
+    }
+
+    showMarkAttendanceModal() {
+        Toast.info('Manual attendance marking: Use the camera for automatic face recognition');
+    }
+
+    async viewStudent(id) {
+        try {
+            const data = await API.request(`/api/students/${id}`);
+            const student = data.student;
+
+            // Show student details modal
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Student Details</h3>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="student-profile" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="avatar" style="width: 60px; height: 60px; font-size: 1.5rem;">${student.name[0]}</div>
+                            <div>
+                                <h4 style="margin: 0;">${student.name}</h4>
+                                <p style="margin: 0; color: var(--text-secondary);">Roll: ${student.roll_no}</p>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Class</label>
+                            <input type="text" value="${student.class || 'N/A'}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Contact</label>
+                            <input type="text" value="${student.contact_no || 'N/A'}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Enrolled On</label>
+                            <input type="text" value="${new Date(student.created_at).toLocaleDateString()}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Face Data</label>
+                            <span class="badge ${student.face_encoding ? 'success' : 'warning'}">
+                                ${student.face_encoding ? 'Registered' : 'Not Registered'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        } catch (error) {
+            Toast.error('Failed to load student details');
+        }
+    }
+
+    async editStudent(id) {
+        try {
+            const data = await API.request(`/api/students/${id}`);
+            const student = data.student;
+
+            // Show edit modal
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.id = 'edit-student-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Edit Student</h3>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="edit-name" value="${student.name}">
+                        </div>
+                        <div class="form-group">
+                            <label>Roll Number</label>
+                            <input type="text" id="edit-roll" value="${student.roll_no}">
+                        </div>
+                        <div class="form-group">
+                            <label>Class</label>
+                            <input type="text" id="edit-class" value="${student.class || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Contact</label>
+                            <input type="text" id="edit-contact" value="${student.contact_no || ''}">
+                        </div>
+                        <button class="btn primary full-width" id="save-student-btn">
+                            <i class="fa-solid fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+            modal.querySelector('#save-student-btn').addEventListener('click', async () => {
+                const updated = {
+                    name: document.getElementById('edit-name').value,
+                    roll_no: document.getElementById('edit-roll').value,
+                    class: document.getElementById('edit-class').value,
+                    contact_no: document.getElementById('edit-contact').value
+                };
+                try {
+                    await API.request(`/api/students/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(updated)
+                    });
+                    Toast.success('Student updated');
+                    modal.remove();
+                    this.loadStudentTab('enrolled');
+                } catch (error) {
+                    Toast.error('Failed to update: ' + error.message);
+                }
+            });
+        } catch (error) {
+            Toast.error('Failed to load student');
+        }
+    }
+
     // ============ ALERTS ============
 
     async loadAlerts(container) {
@@ -889,6 +1057,14 @@ class SurveillXApp {
                         <i class="fa-solid fa-filter"></i> Filter
                     </button>
                 </div>
+                <div class="btn-group">
+                    <button class="btn secondary" id="refresh-alerts">
+                        <i class="fa-solid fa-refresh"></i> Refresh
+                    </button>
+                    <button class="btn danger" id="clear-all-alerts">
+                        <i class="fa-solid fa-trash"></i> Clear All
+                    </button>
+                </div>
             </div>
             
             <div class="card">
@@ -902,6 +1078,15 @@ class SurveillXApp {
 
         document.getElementById('filter-alerts').addEventListener('click', () => {
             this.loadAlertsData();
+        });
+
+        document.getElementById('refresh-alerts').addEventListener('click', () => {
+            this.loadAlertsData();
+            Toast.info('Alerts refreshed');
+        });
+
+        document.getElementById('clear-all-alerts').addEventListener('click', () => {
+            this.clearAllAlerts();
         });
 
         await this.loadAlertsData();
@@ -927,7 +1112,7 @@ class SurveillXApp {
             container.innerHTML = `
                 <div class="alerts-list">
                     ${data.alerts.map(alert => `
-                        <div class="alert-card ${alert.severity}">
+                        <div class="alert-card ${alert.severity} ${alert.dismissed ? 'dismissed' : ''}" id="alert-${alert.id}">
                             <div class="alert-icon">
                                 <i class="fa-solid fa-${this.getAlertIcon(alert.event_type)}"></i>
                             </div>
@@ -936,11 +1121,14 @@ class SurveillXApp {
                                 <div class="alert-meta">
                                     <span><i class="fa-solid fa-clock"></i> ${this.timeAgo(alert.timestamp)}</span>
                                     <span><i class="fa-solid fa-video"></i> Camera ${alert.camera_id}</span>
+                                    ${alert.dismissed ? '<span class="badge success">Resolved</span>' : ''}
                                 </div>
                             </div>
                             <div class="alert-actions">
                                 <span class="badge ${alert.severity}">${alert.severity}</span>
-                                ${alert.clip_path ? `<button class="btn small" onclick="app.playClip(${alert.id})"><i class="fa-solid fa-play"></i> View</button>` : ''}
+                                ${alert.clip_path ? `<button class="btn small" onclick="app.playClip(${alert.id})" title="View Clip"><i class="fa-solid fa-play"></i></button>` : ''}
+                                ${!alert.dismissed ? `<button class="btn small success" onclick="app.dismissAlert(${alert.id})" title="Mark Resolved"><i class="fa-solid fa-check"></i></button>` : ''}
+                                <button class="btn small danger" onclick="app.deleteAlert(${alert.id})" title="Delete"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
                     `).join('')}
@@ -949,6 +1137,55 @@ class SurveillXApp {
         } catch (error) {
             container.innerHTML = `<div class="error-state">Failed: ${error.message}</div>`;
         }
+    }
+
+    async dismissAlert(id) {
+        try {
+            await API.request(`/api/alerts/${id}/resolve`, { method: 'PUT' });
+            Toast.success('Alert resolved');
+            // Update the alert card visually
+            const alertCard = document.getElementById(`alert-${id}`);
+            if (alertCard) {
+                alertCard.classList.add('dismissed');
+                const dismissBtn = alertCard.querySelector('.btn.success');
+                if (dismissBtn) dismissBtn.remove();
+            }
+            // Refresh alerts
+            this.loadAlertsData();
+        } catch (error) {
+            Toast.error('Failed: ' + error.message);
+        }
+    }
+
+    async deleteAlert(id) {
+        if (!confirm('Delete this alert? This cannot be undone.')) return;
+        try {
+            await API.request(`/api/alerts/${id}`, { method: 'DELETE' });
+            Toast.success('Alert deleted');
+            // Remove from DOM
+            const alertCard = document.getElementById(`alert-${id}`);
+            if (alertCard) alertCard.remove();
+        } catch (error) {
+            Toast.error('Failed: ' + error.message);
+        }
+    }
+
+    async clearAllAlerts() {
+        if (!confirm('Clear ALL alerts? This cannot be undone.')) return;
+        try {
+            // Delete alerts one by one or implement bulk clear API
+            Toast.info('Clearing alerts...');
+            await API.request('/api/alerts/clear', { method: 'DELETE' });
+            Toast.success('All alerts cleared');
+            this.loadAlertsData();
+        } catch (error) {
+            Toast.error('Failed: ' + error.message);
+        }
+    }
+
+    playClip(alertId) {
+        Toast.info('Video clip playback coming soon');
+        // TODO: Implement clip playback modal
     }
 
     // ============ SETTINGS ============

@@ -86,3 +86,14 @@ def delete_alert(alert_id):
         return jsonify({"message": "Alert deleted successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@alerts_bp.route('/clear', methods=['DELETE'])
+@jwt_required()
+def clear_all_alerts():
+    """Clear all alerts"""
+    try:
+        db = current_app.db
+        db.clear_alerts()
+        return jsonify({"message": "All alerts cleared successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
