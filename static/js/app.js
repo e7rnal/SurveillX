@@ -1311,9 +1311,7 @@ class SurveillXApp {
     connectSocket() {
         if (typeof io === 'undefined') return;
 
-        this.socket = io('/stream', {
-            transports: ['websocket']
-        });
+        this.socket = io('/stream');
 
         this.socket.on('connect', () => {
             console.log('WebSocket connected');
