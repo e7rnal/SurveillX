@@ -75,10 +75,11 @@ def run_async(coro):
     return future.result(timeout=30)
 
 
-async def consume_and_bridge(track):
+async def consume_and_bridge(track, pc):
     """
     Consume frames from the WebRTC video track and emit them
     to Socket.IO /stream namespace for the browser live monitor.
+    Waits for the peer connection to be fully connected before consuming.
     """
     global _frame_bridge_active
     _frame_bridge_active = True
@@ -87,13 +88,36 @@ async def consume_and_bridge(track):
     from app import socketio
 
     frame_count = 0
-    logger.info("Frame bridge started - relaying WebRTC frames to Socket.IO")
+    logger.info("Frame bridge started - waiting for connection to be fully established...")
+
+    # Wait for the peer connection to be in 'connected' state
+    for i in range(60):  # Wait up to 30 seconds
+        if pc.connectionState == "connected":
+            logger.info("Frame bridge: PC is connected, starting frame consumption")
+            break
+        if pc.connectionState in ["failed", "closed"]:
+            logger.error(f"Frame bridge: PC state is {pc.connectionState}, aborting")
+            _frame_bridge_active = False
+            return
+        await asyncio.sleep(0.5)
+    else:
+        logger.error(f"Frame bridge: PC never reached 'connected' state (stuck at {pc.connectionState})")
+        _frame_bridge_active = False
+        return
+
+    # Small delay to let DTLS/SRTP fully initialize
+    await asyncio.sleep(1.0)
+
+    logger.info(f"Frame bridge: starting frame recv loop. Track kind={track.kind}, readyState={track.readyState}")
 
     try:
         while _frame_bridge_active:
             try:
-                frame = await track.recv()
+                frame = await asyncio.wait_for(track.recv(), timeout=30.0)
                 frame_count += 1
+
+                if frame_count == 1:
+                    logger.info(f"Frame bridge: FIRST FRAME received! size={frame.width}x{frame.height}")
 
                 # Relay every 2nd frame to avoid overloading
                 if frame_count % 2 != 0:
@@ -114,12 +138,16 @@ async def consume_and_bridge(track):
                 if frame_count % 100 == 0:
                     logger.info(f"Frame bridge: relayed {frame_count} frames")
 
+            except asyncio.TimeoutError:
+                logger.warning(f"Frame bridge: timeout waiting for frame (30s). Track state: {track.readyState}, PC state: {pc.connectionState}")
+                break
             except Exception as e:
-                logger.info(f"Frame bridge stopped: {e}")
+                logger.info(f"Frame bridge stopped: {type(e).__name__}: {e}")
                 break
     finally:
         _frame_bridge_active = False
         logger.info(f"Frame bridge ended after {frame_count} frames")
+
 
 
 @webrtc_bp.route('/streamer', methods=['POST', 'OPTIONS'])
@@ -162,6 +190,45 @@ def handle_viewer_offer():
         return jsonify({"error": str(e)}), 500
 
 
+_http_frame_count = 0
+
+@webrtc_bp.route('/frame', methods=['POST', 'OPTIONS'])
+def receive_frame():
+    """
+    HTTP endpoint to receive video frames from the Windows client.
+    Reliable fallback when WebRTC media transport doesn't work.
+    Accepts: { "frame": "<base64 JPEG>", "camera_id": "main", "timestamp": <float> }
+    """
+    global _http_frame_count
+    
+    if request.method == 'OPTIONS':
+        return _cors_response()
+    
+    try:
+        data = request.json
+        if not data or 'frame' not in data:
+            return jsonify({"error": "Missing 'frame' field"}), 400
+        
+        _http_frame_count += 1
+        
+        # Import socketio and emit frame to browser
+        from app import socketio
+        socketio.emit('frame', {
+            'frame': data['frame'],
+            'timestamp': str(data.get('timestamp', '')),
+            'camera_id': data.get('camera_id', 1)
+        }, namespace='/stream')
+        
+        if _http_frame_count % 100 == 0:
+            logger.info(f"HTTP frame relay: {_http_frame_count} frames received")
+        
+        return jsonify({"status": "ok", "frame_count": _http_frame_count}), 200
+        
+    except Exception as e:
+        logger.error(f"Frame receive error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @webrtc_bp.route('/stats', methods=['GET'])
 @jwt_required(optional=True)
 def get_stats():
@@ -171,6 +238,7 @@ def get_stats():
         "active_viewers": len(peer_connections),
         "streamer_connected": streamer_pc is not None,
         "frame_bridge_active": _frame_bridge_active,
+        "http_frames_received": _http_frame_count,
         "connections": list(peer_connections.keys())
     })
 
@@ -212,7 +280,7 @@ async def _handle_streamer(params):
             if track.kind == "video":
                 # Start frame bridge in the event loop
                 loop = get_event_loop()
-                asyncio.run_coroutine_threadsafe(consume_and_bridge(track), loop)
+                asyncio.run_coroutine_threadsafe(consume_and_bridge(track, pc), loop)
                 logger.info("Frame bridge task scheduled")
 
                 # Also relay to WebRTC viewers
