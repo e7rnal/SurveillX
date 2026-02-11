@@ -28,13 +28,24 @@ _frame_bridge_active = False
 
 # Try to import aiortc
 try:
-    from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
+    from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack, RTCConfiguration, RTCIceServer
     from aiortc.contrib.media import MediaRelay
     AIORTC_AVAILABLE = True
     relay = MediaRelay()
 except ImportError:
     AIORTC_AVAILABLE = False
     logger.warning("aiortc not installed - WebRTC disabled")
+
+# ICE Server configuration (STUN + TURN)
+ICE_SERVERS = RTCConfiguration([
+    RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
+    RTCIceServer(urls=["stun:stun1.l.google.com:19302"]),
+    RTCIceServer(
+        urls=["turn:13.205.156.238:3478"],
+        username="surveillx",
+        credential="Vishu@9637"
+    ),
+]) if AIORTC_AVAILABLE else None
 
 
 def get_event_loop():
@@ -180,7 +191,7 @@ async def _handle_streamer(params):
                 pass
             streamer_pc = None
 
-        pc = RTCPeerConnection()
+        pc = RTCPeerConnection(configuration=ICE_SERVERS)
         pc_id = f"streamer-{str(uuid.uuid4())[:8]}"
         streamer_pc = pc
 
@@ -233,7 +244,7 @@ async def _handle_viewer(params):
     try:
         offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
-        pc = RTCPeerConnection()
+        pc = RTCPeerConnection(configuration=ICE_SERVERS)
         pc_id = f"viewer-{str(uuid.uuid4())[:8]}"
         peer_connections[pc_id] = pc
 
