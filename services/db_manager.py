@@ -55,7 +55,13 @@ class DBManager:
     
     def get_all_students(self):
         """Get all students"""
-        query = "SELECT * FROM students ORDER BY created_at DESC"
+        query = """
+            SELECT 
+                id, name, roll_no, contact_no, class, created_at,
+                (face_encoding IS NOT NULL) as has_face_encoding
+            FROM students 
+            ORDER BY created_at DESC
+        """
         return self.execute_query(query)
     
     def get_student_by_id(self, student_id):
