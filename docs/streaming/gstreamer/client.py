@@ -19,7 +19,6 @@ import websockets
 from aiortc import (
     RTCPeerConnection,
     RTCSessionDescription,
-    RTCIceCandidate,
     RTCConfiguration,
     RTCIceServer,
     VideoStreamTrack,
@@ -73,26 +72,20 @@ async def run(server_url: str, camera_index: int):
     pc = RTCPeerConnection(configuration=ICE_CONFIG)
     track = CameraTrack(camera_index)
     pc.addTrack(track)
+    connected = False
 
     @pc.on("connectionstatechange")
     async def on_state():
+        nonlocal connected
         logger.info(f"Connection: {pc.connectionState}")
+        if pc.connectionState == "connected":
+            connected = True
         if pc.connectionState == "failed":
             await pc.close()
 
     logger.info(f"Connecting to {server_url}...")
     async with websockets.connect(server_url) as ws:
-        # Trickle ICE: send candidates as they're generated
-        @pc.on("icecandidate")
-        async def on_ice(candidate):
-            if candidate:
-                await ws.send(json.dumps({
-                    "type": "ice",
-                    "candidate": candidate.candidate,
-                    "sdpMLineIndex": candidate.sdpMLineIndex,
-                }))
-
-        # Create and send offer
+        # Create and send offer (ICE candidates are embedded in the SDP)
         offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
 
@@ -102,7 +95,7 @@ async def run(server_url: str, camera_index: int):
         }))
         logger.info("SDP offer sent")
 
-        # Receive messages (answer + ICE candidates)
+        # Receive messages from server
         async for msg in ws:
             data = json.loads(msg)
 
@@ -110,15 +103,24 @@ async def run(server_url: str, camera_index: int):
                 logger.info("Received SDP answer")
                 answer = RTCSessionDescription(sdp=data["sdp"], type="answer")
                 await pc.setRemoteDescription(answer)
-                logger.info("Connected! Streaming... Press Ctrl+C to stop.")
+                logger.info("Remote description set. Waiting for ICE to connect...")
 
             elif data["type"] == "ice":
-                # Add remote ICE candidate from server
-                candidate = RTCIceCandidate(
-                    sdpMLineIndex=data["sdpMLineIndex"],
-                    candidate=data["candidate"],
-                )
-                await pc.addIceCandidate(candidate)
+                # Server sends trickle ICE candidates — log but skip
+                # (aiortc doesn't support adding raw candidate strings from GStreamer)
+                logger.debug(f"Server ICE candidate received (ignored, using SDP candidates)")
+
+            # Once connected, break out of signaling loop and keep streaming
+            if connected:
+                logger.info("✅ Connected! Streaming... Press Ctrl+C to stop.")
+                break
+
+        # Keep alive while connected
+        try:
+            while pc.connectionState in ["connected", "connecting", "new"]:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            pass
 
     track.stop()
     await pc.close()
