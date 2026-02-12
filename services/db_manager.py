@@ -66,7 +66,13 @@ class DBManager:
     
     def get_student_by_id(self, student_id):
         """Get student by ID"""
-        query = "SELECT * FROM students WHERE id = %s"
+        query = """
+            SELECT 
+                *,
+                (face_encoding IS NOT NULL) as has_face_encoding
+            FROM students 
+            WHERE id = %s
+        """
         results = self.execute_query(query, (student_id,))
         return results[0] if results else None
     
