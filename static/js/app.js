@@ -565,9 +565,14 @@ class SurveillXApp {
                     <button class="tab-btn active" data-tab="enrolled">Enrolled Students</button>
                     <button class="tab-btn" data-tab="pending">Pending Enrollments</button>
                 </div>
-                <button class="btn primary" id="generate-link-btn">
-                    <i class="fa-solid fa-link"></i> Generate Enrollment Link
-                </button>
+                <div style="display:flex;gap:0.5rem;">
+                    <button class="btn primary" id="add-student-btn">
+                        <i class="fa-solid fa-user-plus"></i> Add Student
+                    </button>
+                    <button class="btn secondary" id="generate-link-btn">
+                        <i class="fa-solid fa-link"></i> Enrollment Link
+                    </button>
+                </div>
             </div>
             
             <div class="card">
@@ -578,6 +583,37 @@ class SurveillXApp {
                 </div>
             </div>
             
+            <!-- Add Student Modal -->
+            <div id="add-student-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Add New Student</h3>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Full Name *</label>
+                            <input type="text" id="new-student-name" placeholder="John Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Roll Number *</label>
+                            <input type="text" id="new-student-roll" placeholder="CS2024001" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Class</label>
+                            <input type="text" id="new-student-class" placeholder="CSE-A">
+                        </div>
+                        <div class="form-group">
+                            <label>Contact Number</label>
+                            <input type="text" id="new-student-contact" placeholder="+91 98765 43210">
+                        </div>
+                        <button class="btn primary full-width" id="save-student-btn">
+                            <i class="fa-solid fa-check"></i> Add Student
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Enrollment Link Modal -->
             <div id="enrollment-modal" class="modal">
                 <div class="modal-content">
@@ -625,7 +661,44 @@ class SurveillXApp {
             });
         });
 
-        // Setup modal
+        // Setup Add Student modal
+        const addModal = document.getElementById('add-student-modal');
+        document.getElementById('add-student-btn').addEventListener('click', () => {
+            addModal.classList.add('show');
+        });
+        addModal.querySelector('.close-modal').addEventListener('click', () => {
+            addModal.classList.remove('show');
+        });
+
+        // Save student handler
+        document.getElementById('save-student-btn').addEventListener('click', async () => {
+            const name = document.getElementById('new-student-name').value.trim();
+            const rollNo = document.getElementById('new-student-roll').value.trim();
+            const className = document.getElementById('new-student-class').value.trim();
+            const contactNo = document.getElementById('new-student-contact').value.trim();
+
+            if (!name || !rollNo) {
+                Toast.error('Name and Roll Number are required');
+                return;
+            }
+
+            try {
+                await API.addStudent({ name, roll_no: rollNo, class: className, contact_no: contactNo });
+                Toast.success('Student added successfully!');
+                addModal.classList.remove('show');
+                // Clear form
+                document.getElementById('new-student-name').value = '';
+                document.getElementById('new-student-roll').value = '';
+                document.getElementById('new-student-class').value = '';
+                document.getElementById('new-student-contact').value = '';
+                // Refresh students list
+                await this.loadStudentTab('enrolled');
+            } catch (error) {
+                Toast.error('Failed to add student: ' + error.message);
+            }
+        });
+
+        // Setup enrollment modal
         const modal = document.getElementById('enrollment-modal');
         document.getElementById('generate-link-btn').addEventListener('click', () => {
             modal.classList.add('show');
@@ -646,7 +719,7 @@ class SurveillXApp {
 
             try {
                 const data = await API.generateEnrollmentLink(email, rollNo);
-                const link = `${window.location.origin}/templates/enroll.html?token=${data.token}`;
+                const link = `${window.location.origin}/enroll?token=${data.token}`;
 
                 document.getElementById('enrollment-link').value = link;
                 document.getElementById('qr-image').src =
@@ -1330,8 +1403,8 @@ class SurveillXApp {
 
     // Stream mode configuration
     streamModes = {
-        jpegws: { port: 8443, wsPath: '', name: 'JPEG WebSocket' },
-        fastrtc: { port: 8080, wsPath: '/ws/view', name: 'FastRTC' },
+        jpegws: { port: null, wsPath: '/ws/stream', name: 'JPEG WebSocket' },
+        fastrtc: { port: null, wsPath: '/ws/fastrtc', name: 'FastRTC' },
     };
     currentMode = 'jpegws';
     autoSwitch = false;
@@ -1459,7 +1532,8 @@ class SurveillXApp {
         if (!mode) return;
 
         const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const streamUrl = `${wsProtocol}//${location.hostname}:${mode.port}${mode.wsPath}`;
+        const portPart = mode.port ? `:${mode.port}` : (location.port ? `:${location.port}` : '');
+        const streamUrl = `${wsProtocol}//${location.hostname}${portPart}${mode.wsPath}`;
 
         console.log(`Connecting to ${this.currentMode} stream: ${streamUrl}`);
         this.streamWs = new WebSocket(streamUrl);

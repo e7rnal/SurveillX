@@ -66,10 +66,6 @@ systemctl enable --now surveillx-ml
 systemctl restart nginx
 sleep 2
 
-# Update DuckDNS
-echo -e "\n${YELLOW}Updating DuckDNS...${NC}"
-bash /home/ubuntu/duckdns/duck.sh 2>/dev/null || true
-
 # Status check
 echo -e "\n${GREEN}═══════════════════════════════════════${NC}"
 echo -e "${GREEN}  Deployment Status${NC}"
@@ -86,11 +82,7 @@ done
 
 echo ""
 echo -e "${GREEN}Access your dashboard at:${NC}"
-echo "  http://${DOMAIN}"
-echo ""
-echo -e "${YELLOW}To enable HTTPS:${NC}"
-echo "  sudo apt install certbot python3-certbot-nginx"
-echo "  sudo certbot --nginx -d ${DOMAIN}"
+echo "  https://${DOMAIN}"
 echo ""
 echo -e "${YELLOW}Useful commands:${NC}"
 echo "  sudo systemctl status surveillx          # Flask dashboard"

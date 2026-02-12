@@ -111,6 +111,20 @@ const API = {
         return this.request(`/api/students/${id}`);
     },
 
+    async addStudent(data) {
+        return this.request('/api/students/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateStudent(id, data) {
+        return this.request(`/api/students/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
     async deleteStudent(id) {
         return this.request(`/api/students/${id}`, { method: 'DELETE' });
     },

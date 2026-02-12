@@ -38,9 +38,11 @@ fi
 
 echo "$(date): Public IP: $PUBLIC_IP" >> $LOG_FILE
 
-# 1. Update DuckDNS
-echo "$(date): Updating DuckDNS..." >> $LOG_FILE
-curl -s "https://www.duckdns.org/update?domains=surveillx&token=fc1aa3a3-a836-4cbb-bf93-c9503adb9ca7&ip=$PUBLIC_IP" >> $LOG_FILE
+# 1. Update No-IP Dynamic DNS
+echo "$(date): Updating No-IP DNS..." >> $LOG_FILE
+# No-IP uses their DUC client or HTTP API
+curl -s "https://dynupdate.no-ip.com/nic/update?hostname=surveillx.servebeer.com&myip=$PUBLIC_IP" \
+  -H "Authorization: Basic $(echo -n 'vj6102002@gmail.com:YOUR_NOIP_PASSWORD' | base64)" >> $LOG_FILE 2>&1 || true
 echo "" >> $LOG_FILE
 
 # 2. Update TURN server config
@@ -93,5 +95,5 @@ if [ -f /home/ubuntu/surveillx-backend/.env ]; then
 fi
 
 echo "$(date): Startup script completed successfully" >> $LOG_FILE
-echo "$(date): DuckDNS hostname: surveillx.servebeer.com" >> $LOG_FILE
+echo "$(date): Hostname: surveillx.servebeer.com" >> $LOG_FILE
 echo "$(date): TURN server: $PUBLIC_IP:3478" >> $LOG_FILE
