@@ -27,6 +27,45 @@ class RecognitionHandler:
         self.db = db
         self.frame_count = 0
         self.recognition_interval = 3  # Process every Nth frame to save CPU
+        self.loaded_student_ids = set()  # Track loaded students for hot-reload
+        
+    def reload_students(self):
+        """
+        Reload students from database and add any new ones to face service
+        
+        This enables dynamic face registration when admin approves enrollments
+        without requiring server restart.
+        
+        Returns:
+            int: Number of newly loaded students
+        """
+        try:
+            students = self.db.get_all_students()
+            new_count = 0
+            
+            for student in students:
+                student_id = student['id']
+                
+                # Skip if already loaded
+                if student_id in self.loaded_student_ids:
+                    continue
+                    
+                # Add new student to face service
+                if student.get('face_encoding'):
+                    self.face_service.add_known_face(
+                        student_id,
+                        student['name'],
+                        student['face_encoding']
+                    )
+                    self.loaded_student_ids.add(student_id)
+                    new_count += 1
+                    logger.info(f"Loaded new student: {student['name']} (ID: {student_id})")
+            
+            return new_count
+            
+        except Exception as e:
+            logger.error(f"Error reloading students: {e}")
+            return 0
         
     def process_frame(self, frame):
         """

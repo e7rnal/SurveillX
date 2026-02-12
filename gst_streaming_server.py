@@ -189,6 +189,22 @@ async def handle_connection(websocket, path=None):
 
 
 # ---------- Main ----------
+async def reload_students_periodically():
+    """Background task to reload students every 10 seconds for instant recognition of newly approved enrollments"""
+    await asyncio.sleep(10)  # Wait 10s before first check
+    
+    while True:
+        try:
+            if recognition_handler:
+                new_count = recognition_handler.reload_students()
+                if new_count > 0:
+                    logger.info(f"🔄 Reloaded {new_count} new student(s) for recognition")
+        except Exception as e:
+            logger.error(f"Error in reload task: {e}")
+        
+        await asyncio.sleep(10)  # Check every 10 seconds
+
+
 async def main():
     global recognition_handler
     
@@ -213,7 +229,15 @@ async def main():
                 )
         
         recognition_handler = RecognitionHandler(face_service, db)
+        
+        # Initialize loaded student IDs
+        recognition_handler.loaded_student_ids = {s['id'] for s in students if s.get('face_encoding')}
+        
         logger.info(f"✅ Face recognition initialized with {len(students)} students")
+        
+        # Start background reload task
+        asyncio.create_task(reload_students_periodically())
+        
     except Exception as e:
         logger.error(f"Failed to initialize face recognition: {e}")
         recognition_handler = None
