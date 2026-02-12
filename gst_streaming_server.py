@@ -249,7 +249,23 @@ async def handle_client(websocket, path=None):
         return
     logger.info("Pipeline PLAYING — waiting for SDP offer...")
 
-    sdp_done = False
+    # Event to signal when ICE gathering is complete
+    ice_gathering_complete = asyncio.Event()
+
+    def on_ice_gathering_state(element, pspec):
+        state = element.get_property("ice-gathering-state")
+        logger.info(f"ICE gathering state: {state}")
+        if state == GstWebRTC.WebRTCICEGatheringState.COMPLETE:
+            main_loop.call_soon_threadsafe(ice_gathering_complete.set)
+
+    webrtcbin.connect("notify::ice-gathering-state", on_ice_gathering_state)
+
+    # Also monitor ICE connection state for debugging
+    def on_ice_conn_state(element, pspec):
+        state = element.get_property("ice-connection-state")
+        logger.info(f"ICE connection state: {state}")
+
+    webrtcbin.connect("notify::ice-connection-state", on_ice_conn_state)
 
     try:
         async for message in websocket:
@@ -287,19 +303,37 @@ async def handle_client(websocket, path=None):
                     logger.error("No 'answer' in reply")
                     continue
 
-                # Set local description (our answer)
+                # Set local description (triggers ICE gathering)
                 promise = Gst.Promise.new()
                 webrtcbin.emit("set-local-description", answer, promise)
                 promise.wait()
 
-                # Send answer to client
-                answer_sdp = answer.sdp.as_text()
+                # CRITICAL: Wait for ICE gathering to complete so candidates
+                # are embedded in the SDP answer. Without this, the answer
+                # has 0 candidates and aiortc can't connect.
+                logger.info("Waiting for ICE gathering to complete...")
+                try:
+                    await asyncio.wait_for(ice_gathering_complete.wait(), timeout=10.0)
+                    logger.info("ICE gathering complete!")
+                except asyncio.TimeoutError:
+                    logger.warning("ICE gathering timeout (10s) — sending answer with available candidates")
+
+                # Re-read local description (now includes gathered ICE candidates)
+                local_desc = webrtcbin.get_property("local-description")
+                if local_desc:
+                    answer_sdp = local_desc.sdp.as_text()
+                else:
+                    answer_sdp = answer.sdp.as_text()
+
+                # Count candidates in the SDP
+                candidate_count = answer_sdp.count("a=candidate:")
+                logger.info(f"Answer SDP has {candidate_count} ICE candidates")
+
                 await websocket.send(json.dumps({
                     "type": "answer",
                     "sdp": answer_sdp,
                 }))
-                logger.info("Sent SDP answer to client")
-                sdp_done = True
+                logger.info("Sent SDP answer to client (with candidates)")
 
             elif data["type"] == "ice":
                 # Add remote ICE candidate from client
@@ -309,15 +343,12 @@ async def handle_client(websocket, path=None):
                     webrtcbin.emit("add-ice-candidate", mline, candidate)
                     logger.debug(f"Added ICE candidate: {candidate[:60]}...")
 
-        # The async for loop exits when the client stops sending messages.
-        # But the WebSocket is still open! Keep it alive for media streaming.
-        if sdp_done:
-            logger.info("SDP exchange complete. Keeping connection alive for media...")
-            # Keep alive: wait until the WebSocket actually closes
-            try:
-                await websocket.wait_closed()
-            except Exception:
-                pass
+        # Keep WebSocket alive for media streaming
+        logger.info("Signaling done. Keeping connection alive for media...")
+        try:
+            await websocket.wait_closed()
+        except Exception:
+            pass
 
     except websockets.exceptions.ConnectionClosed as e:
         logger.info(f"Client disconnected: {e}")
