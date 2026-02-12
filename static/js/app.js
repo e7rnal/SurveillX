@@ -1396,10 +1396,9 @@ class SurveillXApp {
         }
         this.lastFrameTime = now;
 
-        // Calculate latency (server timestamp → browser render)
-        if (data.timestamp) {
-            const serverTime = parseFloat(data.timestamp) * 1000; // seconds → ms
-            const latencyMs = Math.max(0, now - serverTime);
+        // Calculate latency (server emit time → browser render)
+        if (data.server_time) {
+            const latencyMs = Math.max(0, now - data.server_time);
             const latencyDisplay = document.getElementById('latency-display');
             if (latencyDisplay) {
                 if (latencyMs < 1000) {
@@ -1409,6 +1408,12 @@ class SurveillXApp {
                 }
                 latencyDisplay.style.color = latencyMs < 300 ? 'var(--success)' : latencyMs < 600 ? 'var(--warning)' : 'var(--danger)';
             }
+        }
+
+        // Mark connection as active when receiving frames
+        if (!this._streamActive) {
+            this._streamActive = true;
+            this.updateConnectionStatus(true);
         }
     }
 

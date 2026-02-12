@@ -118,10 +118,13 @@ def receive_frame():
             return jsonify({"error": "No frame data"}), 400
 
         # Broadcast to all /stream Socket.IO clients (the browser)
+        # Use server's current time for accurate latency measurement
+        import time as _time
         socketio.emit('frame', {
             'frame': data['frame'],
             'camera_id': data.get('camera_id', 1),
-            'timestamp': data.get('timestamp', '')
+            'timestamp': data.get('timestamp', ''),
+            'server_time': _time.time() * 1000,  # ms for JS Date.now() comparison
         }, namespace='/stream')
 
         return jsonify({"ok": True}), 200
