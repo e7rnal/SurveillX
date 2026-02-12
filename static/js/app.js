@@ -1396,9 +1396,16 @@ class SurveillXApp {
         }
         this.lastFrameTime = now;
 
-        // Calculate latency (server emit time → browser render)
-        if (data.server_time) {
-            const latencyMs = Math.max(0, now - data.server_time);
+        // Calculate end-to-end latency (client capture → browser render)
+        // Uses client timestamp since browser and client are on same machine (same clock)
+        let latencyMs = null;
+        if (data.timestamp) {
+            const clientTimeMs = parseFloat(data.timestamp) * 1000;
+            latencyMs = now - clientTimeMs;
+        } else if (data.server_time) {
+            latencyMs = now - data.server_time;
+        }
+        if (latencyMs !== null && latencyMs >= 0) {
             const latencyDisplay = document.getElementById('latency-display');
             if (latencyDisplay) {
                 if (latencyMs < 1000) {

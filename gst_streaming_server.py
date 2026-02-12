@@ -44,12 +44,12 @@ frame_count = 0
 current_ws = None
 
 
-def forward_to_flask(frame_b64, camera_id=1):
+def forward_to_flask(frame_b64, camera_id=1, client_timestamp=""):
     """POST a base64-encoded JPEG frame to Flask for Socket.IO broadcast."""
     try:
         r = http_session.post(
             FLASK_FRAME_ENDPOINT,
-            json={"frame": frame_b64, "camera_id": camera_id, "timestamp": str(time.time())},
+            json={"frame": frame_b64, "camera_id": camera_id, "timestamp": client_timestamp},
             timeout=2,
         )
         if r.status_code != 200 and frame_count % 100 == 0:
@@ -86,6 +86,7 @@ async def handle_client(websocket, path=None):
                 # Receive JPEG frame from client
                 frame_b64 = data.get("frame", "")
                 camera_id = data.get("camera_id", 1)
+                client_ts = data.get("timestamp", "")
 
                 if not frame_b64:
                     continue
@@ -93,16 +94,11 @@ async def handle_client(websocket, path=None):
                 frame_count += 1
 
                 if frame_count == 1:
-                    # Decode first frame to check quality
                     raw = base64.b64decode(frame_b64)
                     logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes")
-                    # Save first frame for debug
-                    with open("/tmp/first_frame.jpg", "wb") as f:
-                        f.write(raw)
-                    logger.info("Saved /tmp/first_frame.jpg for inspection")
 
                 # Forward to Flask for browser display
-                forward_to_flask(frame_b64, camera_id)
+                forward_to_flask(frame_b64, camera_id, client_ts)
 
                 if frame_count % 200 == 0:
                     logger.info(f"Processed {frame_count} frames")
