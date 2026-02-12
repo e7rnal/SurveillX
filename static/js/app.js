@@ -1395,6 +1395,21 @@ class SurveillXApp {
             if (fpsDisplay) fpsDisplay.textContent = fps.toFixed(1);
         }
         this.lastFrameTime = now;
+
+        // Calculate latency (server timestamp → browser render)
+        if (data.timestamp) {
+            const serverTime = parseFloat(data.timestamp) * 1000; // seconds → ms
+            const latencyMs = Math.max(0, now - serverTime);
+            const latencyDisplay = document.getElementById('latency-display');
+            if (latencyDisplay) {
+                if (latencyMs < 1000) {
+                    latencyDisplay.textContent = `${Math.round(latencyMs)}ms`;
+                } else {
+                    latencyDisplay.textContent = `${(latencyMs / 1000).toFixed(1)}s`;
+                }
+                latencyDisplay.style.color = latencyMs < 300 ? 'var(--success)' : latencyMs < 600 ? 'var(--warning)' : 'var(--danger)';
+            }
+        }
     }
 
     handleDetection(data) {
