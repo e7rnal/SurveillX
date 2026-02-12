@@ -108,10 +108,10 @@ def health():
             "error": str(e)
         }), 500
 
-# Internal endpoint: receive frames from GStreamer server and broadcast to browser
+# Internal endpoint: receive frames from streaming server and broadcast to browser
 @app.route('/api/stream/frame', methods=['POST'])
 def receive_frame():
-    """Receive a frame from the GStreamer server and broadcast to browser clients."""
+    """Receive a frame from the streaming server and broadcast to browser clients."""
     try:
         data = request.get_json(silent=True)
         if not data or 'frame' not in data:
