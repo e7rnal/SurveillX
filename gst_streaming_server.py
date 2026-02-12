@@ -75,13 +75,11 @@ glib_loop = None
 
 
 # ---------- Frame Processing ----------
-def forward_to_browser(frame):
-    """Encode frame as JPEG and POST to Flask for Socket.IO broadcast."""
+def forward_to_browser(frame_b64):
+    """POST a base64-encoded JPEG frame to Flask for Socket.IO broadcast."""
     global flask_connected
 
     try:
-        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
-        frame_b64 = base64.b64encode(buffer).decode("utf-8")
         r = http_session.post(
             FLASK_FRAME_ENDPOINT,
             json={"frame": frame_b64, "camera_id": 1, "timestamp": str(time.time())},
@@ -104,17 +102,13 @@ def process_for_attendance(frame):
     Import SurveillX face recognition service and process.
     """
     # TODO: Import and call actual face recognition
-    # from services.face_recognition import recognize_faces
-    # detections = recognize_faces(frame)
-    # for det in detections:
-    #     submit_attendance(det.student_id)
     pass
 
 
 def on_new_sample(sink):
     """
-    Called by GStreamer's appsink when a decoded frame is ready.
-    This runs in the GLib main loop thread — keep it fast.
+    Called by GStreamer's appsink when a JPEG-encoded frame is ready.
+    The pipeline already encodes to JPEG, so we just base64 it.
     """
     global frame_count
 
@@ -123,32 +117,22 @@ def on_new_sample(sink):
         return Gst.FlowReturn.OK
 
     buf = sample.get_buffer()
-    caps = sample.get_caps()
-    struct = caps.get_structure(0)
-    width = struct.get_value("width")
-    height = struct.get_value("height")
-
     success, map_info = buf.map(Gst.MapFlags.READ)
     if not success:
         return Gst.FlowReturn.OK
 
-    # Copy frame data to numpy array
-    frame = np.ndarray(
-        shape=(height, width, 3), dtype=np.uint8, buffer=map_info.data
-    ).copy()
+    # Buffer is already JPEG — just base64-encode it
+    frame_b64 = base64.b64encode(bytes(map_info.data)).decode("utf-8")
     buf.unmap(map_info)
 
     frame_count += 1
 
     if frame_count == 1:
-        logger.info(f"🎉 FIRST FRAME received! {width}x{height}")
-
-    # Face recognition every 5th frame (to save CPU)
-    if frame_count % 5 == 0:
-        process_for_attendance(frame)
+        caps = sample.get_caps()
+        logger.info(f"🎉 FIRST FRAME received! caps={caps.to_string()[:100]} buf_size={map_info.size}")
 
     # Forward every frame to browser
-    forward_to_browser(frame)
+    forward_to_browser(frame_b64)
 
     if frame_count % 200 == 0:
         logger.info(f"Processed {frame_count} frames")
@@ -160,7 +144,8 @@ def on_new_sample(sink):
 def create_pipeline():
     """
     Create GStreamer pipeline:
-    webrtcbin (receives RTP) → decode VP8 → convert to BGR → appsink (Python callback)
+    webrtcbin (receives RTP) → decode VP8 → encode JPEG → appsink
+    JPEG encoding happens inside GStreamer (C code) for correct pixel handling.
     """
     global pipeline, webrtcbin
 
@@ -169,8 +154,9 @@ def create_pipeline():
         "recv. ! queue max-size-buffers=2 leaky=downstream "
         "! rtpvp8depay ! vp8dec "
         "! queue max-size-buffers=2 leaky=downstream "
-        "! videoconvert ! video/x-raw,format=BGR "
-        "! appsink name=sink emit-signals=true sync=false max-buffers=1 drop=true"
+        "! videoconvert "
+        "! jpegenc quality=90 "
+        "! appsink name=sink emit-signals=true sync=false max-buffers=2 drop=true"
     )
 
     pipeline = Gst.parse_launch(pipe_str)
@@ -183,7 +169,7 @@ def create_pipeline():
     # Add TURN server for NAT traversal
     webrtcbin.emit("add-turn-server", TURN_URL)
 
-    logger.info("GStreamer pipeline created")
+    logger.info("GStreamer pipeline created (with jpegenc)")
     return pipeline
 
 
