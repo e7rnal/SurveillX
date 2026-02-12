@@ -1249,6 +1249,11 @@ class SurveillXApp {
             const data = await API.request(`/api/students/${id}`);
             const student = data.student;
 
+            // DEBUG: Log student data
+            console.log('Student data:', student);
+            console.log('has_face_encoding:', student.has_face_encoding);
+            console.log('face_encoding exists:', !!student.face_encoding);
+
             // Show student details modal
             const modal = document.createElement('div');
             modal.className = 'modal show';
