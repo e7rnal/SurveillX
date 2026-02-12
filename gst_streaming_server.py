@@ -80,7 +80,7 @@ def forward_to_browser(frame):
     global flask_connected
 
     try:
-        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
         frame_b64 = base64.b64encode(buffer).decode("utf-8")
         r = http_session.post(
             FLASK_FRAME_ENDPOINT,
@@ -147,9 +147,8 @@ def on_new_sample(sink):
     if frame_count % 5 == 0:
         process_for_attendance(frame)
 
-    # Forward to browser every 2nd frame (15fps at 30fps input)
-    if frame_count % 2 == 0:
-        forward_to_browser(frame)
+    # Forward every frame to browser
+    forward_to_browser(frame)
 
     if frame_count % 200 == 0:
         logger.info(f"Processed {frame_count} frames")
