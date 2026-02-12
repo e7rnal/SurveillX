@@ -37,6 +37,9 @@ class SurveillXApp {
 
         // Request notification permission
         this.requestNotificationPermission();
+
+        // Setup mobile hamburger toggle
+        this.setupMobileMenu();
     }
 
     setupNavigation() {
@@ -45,6 +48,8 @@ class SurveillXApp {
                 e.preventDefault();
                 const page = link.dataset.page;
                 this.loadPage(page);
+                // Close sidebar on mobile after nav click
+                this.closeMobileMenu();
             });
         });
 
@@ -56,6 +61,31 @@ class SurveillXApp {
                 Toast.info('Logged out successfully');
             });
         }
+    }
+
+    setupMobileMenu() {
+        const hamburger = document.getElementById('hamburger-btn');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (hamburger) {
+            hamburger.addEventListener('click', () => this.toggleMobileMenu());
+        }
+        if (overlay) {
+            overlay.addEventListener('click', () => this.closeMobileMenu());
+        }
+    }
+
+    toggleMobileMenu() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar?.classList.toggle('open');
+        overlay?.classList.toggle('show');
+    }
+
+    closeMobileMenu() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar?.classList.remove('open');
+        overlay?.classList.remove('show');
     }
 
     setupHeaderActions() {
