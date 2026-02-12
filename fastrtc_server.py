@@ -47,15 +47,17 @@ MAX_LATENCY_SAMPLES = 50
 
 
 async def broadcast_to_viewers(message: str):
-    """Send a message to all connected browser viewers."""
+    """Send a message to all connected browser viewers — parallel for lowest latency."""
     if not viewers:
         return
-    dead = set()
-    for ws in viewers.copy():
+    async def _safe_send(ws):
         try:
             await ws.send_text(message)
         except Exception:
-            dead.add(ws)
+            return ws
+        return None
+    results = await asyncio.gather(*[_safe_send(ws) for ws in viewers.copy()])
+    dead = {ws for ws in results if ws is not None}
     viewers.difference_update(dead)
 
 
@@ -118,12 +120,13 @@ async def ws_stream(websocket: WebSocket):
                 raw = base64.b64decode(frame_b64)
                 logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes, viewers={len(viewers)}")
 
-            # Prepare broadcast
+            # Prepare broadcast with server timestamp for latency measurement
             broadcast_msg = json.dumps({
                 "type": "frame",
                 "frame": frame_b64,
                 "camera_id": msg.get("camera_id", 1),
                 "timestamp": msg.get("timestamp", ""),
+                "server_time": time.time() * 1000,
                 "width": msg.get("width", 0),
                 "height": msg.get("height", 0),
             })

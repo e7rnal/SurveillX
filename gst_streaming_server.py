@@ -41,16 +41,17 @@ last_frame_data = None  # Cache last frame for new viewer connections
 
 
 async def broadcast_to_viewers(message):
-    """Send a message to all connected browser viewers."""
+    """Send a message to all connected browser viewers — parallel for lowest latency."""
     if not viewers:
         return
-    # Use gather for parallel sends
-    dead = set()
-    for ws in viewers.copy():
+    async def _safe_send(ws):
         try:
             await ws.send(message)
         except Exception:
-            dead.add(ws)
+            return ws
+        return None
+    results = await asyncio.gather(*[_safe_send(ws) for ws in viewers.copy()])
+    dead = {ws for ws in results if ws is not None}
     viewers.difference_update(dead)
 
 
@@ -94,12 +95,13 @@ async def handle_connection(websocket, path=None):
                     raw = base64.b64decode(frame_b64)
                     logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes, viewers={len(viewers)}")
 
-                # Prepare broadcast message (include client timestamp for latency measurement)
+                # Prepare broadcast message with server timestamp for latency
                 broadcast_msg = json.dumps({
                     "type": "frame",
                     "frame": frame_b64,
                     "camera_id": msg.get("camera_id", 1),
                     "timestamp": msg.get("timestamp", ""),
+                    "server_time": time.time() * 1000,
                     "width": msg.get("width", 0),
                     "height": msg.get("height", 0),
                 })

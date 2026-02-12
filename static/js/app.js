@@ -585,7 +585,7 @@ class SurveillXApp {
             
             <!-- Add Student Modal -->
             <div id="add-student-modal" class="modal">
-                <div class="modal-content">
+                <div class="modal-content" style="max-width: 600px;">
                     <div class="modal-header">
                         <h3>Add New Student</h3>
                         <button class="close-modal">&times;</button>
@@ -607,6 +607,36 @@ class SurveillXApp {
                             <label>Contact Number</label>
                             <input type="text" id="new-student-contact" placeholder="+91 98765 43210">
                         </div>
+                        
+                        <!-- 5 Photo Upload -->
+                        <div class="form-group">
+                            <label>Face Photos (5 required) *</label>
+                            <p class="hint" style="margin-bottom: 0.8rem;">Upload 5 photos of the student from different angles for accurate face recognition.</p>
+                            <div id="photo-upload-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem;">
+                                ${['Front Face', 'Left Side', 'Right Side', 'Look Up', 'Look Down'].map((pose, i) => `
+                                    <div class="photo-slot" data-index="${i}" style="
+                                        border: 2px dashed var(--border);
+                                        border-radius: 8px;
+                                        aspect-ratio: 1;
+                                        display: flex;
+                                        flex-direction: column;
+                                        align-items: center;
+                                        justify-content: center;
+                                        cursor: pointer;
+                                        position: relative;
+                                        overflow: hidden;
+                                        background: var(--bg-tertiary);
+                                        transition: border-color 0.2s;
+                                    ">
+                                        <i class="fa-solid fa-camera" style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 4px;"></i>
+                                        <span style="font-size: 0.65rem; color: var(--text-secondary); text-align: center;">${pose}</span>
+                                        <input type="file" accept="image/*" capture="user" style="display:none;" data-photo-index="${i}">
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <p id="photo-count-label" class="hint" style="margin-top: 0.5rem;">0/5 photos added</p>
+                        </div>
+                        
                         <button class="btn primary full-width" id="save-student-btn">
                             <i class="fa-solid fa-check"></i> Add Student
                         </button>
@@ -663,6 +693,9 @@ class SurveillXApp {
 
         // Setup Add Student modal
         const addModal = document.getElementById('add-student-modal');
+        this._studentPhotos = [null, null, null, null, null]; // 5 photo slots
+        const poses = ['Front Face', 'Left Side', 'Right Side', 'Look Up', 'Look Down'];
+
         document.getElementById('add-student-btn').addEventListener('click', () => {
             addModal.classList.add('show');
         });
@@ -670,7 +703,58 @@ class SurveillXApp {
             addModal.classList.remove('show');
         });
 
-        // Save student handler
+        // Photo slot click → open file picker
+        document.querySelectorAll('.photo-slot').forEach(slot => {
+            const idx = parseInt(slot.dataset.index);
+            const fileInput = slot.querySelector('input[type="file"]');
+
+            slot.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    this._studentPhotos[idx] = ev.target.result; // base64 data URL
+                    // Show preview
+                    slot.innerHTML = `
+                        <img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">
+                        <button class="photo-remove-btn" data-rm-index="${idx}" style="
+                            position:absolute; top:2px; right:2px;
+                            background:rgba(0,0,0,0.6); color:#fff;
+                            border:none; border-radius:50%; width:20px; height:20px;
+                            cursor:pointer; font-size:12px; line-height:20px; text-align:center;
+                        ">&times;</button>
+                        <input type="file" accept="image/*" capture="user" style="display:none;" data-photo-index="${idx}">
+                    `;
+                    // Re-bind click
+                    const newInput = slot.querySelector('input[type="file"]');
+                    slot.onclick = () => newInput.click();
+                    newInput.addEventListener('change', arguments.callee);
+
+                    // Remove button
+                    slot.querySelector('.photo-remove-btn').addEventListener('click', (ev2) => {
+                        ev2.stopPropagation();
+                        this._studentPhotos[idx] = null;
+                        slot.innerHTML = `
+                            <i class="fa-solid fa-camera" style="font-size:1.2rem;color:var(--text-secondary);margin-bottom:4px;"></i>
+                            <span style="font-size:0.65rem;color:var(--text-secondary);text-align:center;">${poses[idx]}</span>
+                            <input type="file" accept="image/*" capture="user" style="display:none;" data-photo-index="${idx}">
+                        `;
+                        const resetInput = slot.querySelector('input[type="file"]');
+                        slot.onclick = () => resetInput.click();
+                        resetInput.addEventListener('change', arguments.callee);
+                        this._updatePhotoCount();
+                    });
+
+                    this._updatePhotoCount();
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Save student handler (with photos)
         document.getElementById('save-student-btn').addEventListener('click', async () => {
             const name = document.getElementById('new-student-name').value.trim();
             const rollNo = document.getElementById('new-student-roll').value.trim();
@@ -682,19 +766,37 @@ class SurveillXApp {
                 return;
             }
 
+            const photos = this._studentPhotos.filter(p => p !== null);
+            if (photos.length < 5) {
+                Toast.error(`Please upload all 5 photos (${photos.length}/5 added)`);
+                return;
+            }
+
+            const btn = document.getElementById('save-student-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
             try {
-                await API.addStudent({ name, roll_no: rollNo, class: className, contact_no: contactNo });
-                Toast.success('Student added successfully!');
+                const photoData = photos.map((p, i) => ({ data: p, pose: poses[i] }));
+                await API.addStudent({
+                    name, roll_no: rollNo, class: className, contact_no: contactNo,
+                    photos: photoData
+                });
+                Toast.success('Student added with face encoding!');
                 addModal.classList.remove('show');
                 // Clear form
                 document.getElementById('new-student-name').value = '';
                 document.getElementById('new-student-roll').value = '';
                 document.getElementById('new-student-class').value = '';
                 document.getElementById('new-student-contact').value = '';
+                this._studentPhotos = [null, null, null, null, null];
                 // Refresh students list
                 await this.loadStudentTab('enrolled');
             } catch (error) {
                 Toast.error('Failed to add student: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Add Student';
             }
         });
 
@@ -742,6 +844,15 @@ class SurveillXApp {
 
         // Load initial tab
         await this.loadStudentTab('enrolled');
+    }
+
+    _updatePhotoCount() {
+        const count = this._studentPhotos ? this._studentPhotos.filter(p => p !== null).length : 0;
+        const label = document.getElementById('photo-count-label');
+        if (label) {
+            label.textContent = `${count}/5 photos added`;
+            label.style.color = count === 5 ? 'var(--success)' : 'var(--text-secondary)';
+        }
     }
 
     async loadStudentTab(tab) {
@@ -1664,19 +1775,28 @@ class SurveillXApp {
         // Hide overlay
         if (overlay) overlay.style.display = 'none';
 
-        // Draw frame
+        // Fast path: decode base64 → Blob → ObjectURL (faster than data: URI)
+        const raw = atob(data.frame);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+
+        // Draw frame — reuse Image for speed
         const ctx = canvas.getContext('2d');
-        const img = new Image();
+        if (!this._frameImg) this._frameImg = new Image();
+        const img = this._frameImg;
         img.onload = () => {
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);  // release memory immediately
 
             // Update resolution display
             const resDisplay = document.getElementById('resolution-display');
             if (resDisplay) resDisplay.textContent = `${img.width}x${img.height}`;
         };
-        img.src = 'data:image/jpeg;base64,' + data.frame;
+        img.src = url;
 
         // Update frame count
         this.frameCount = (this.frameCount || 0) + 1;

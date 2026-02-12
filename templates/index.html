@@ -1,28 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SurveillX - Smart Surveillance Dashboard</title>
     <meta name="description" content="AI-powered campus surveillance with face recognition and activity detection">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    
+
     <!-- Styles -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
@@ -35,7 +37,7 @@
                     <span class="logo-text">Surveil<span>X</span></span>
                 </a>
             </div>
-            
+
             <nav class="nav-menu">
                 <div class="nav-section">
                     <div class="nav-section-title">Main Menu</div>
@@ -52,7 +54,7 @@
                         <span>Attendance</span>
                     </a>
                 </div>
-                
+
                 <div class="nav-section">
                     <div class="nav-section-title">Management</div>
                     <a href="#" class="nav-link" data-page="students">
@@ -65,7 +67,7 @@
                         <span class="nav-badge" id="alert-count">0</span>
                     </a>
                 </div>
-                
+
                 <div class="nav-section">
                     <div class="nav-section-title">System</div>
                     <a href="#" class="nav-link" data-page="settings">
@@ -74,7 +76,7 @@
                     </a>
                 </div>
             </nav>
-            
+
             <div class="sidebar-footer">
                 <div class="user-info">
                     <div class="user-avatar">A</div>
@@ -88,7 +90,7 @@
                 </div>
             </div>
         </aside>
-        
+
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
@@ -106,24 +108,25 @@
                     </button>
                 </div>
             </header>
-            
+
             <div id="main-content">
                 <!-- Content loaded dynamically -->
-                <div class="loading-state" style="display: flex; align-items: center; justify-content: center; height: 400px;">
+                <div class="loading-state"
+                    style="display: flex; align-items: center; justify-content: center; height: 400px;">
                     <div class="loading-spinner"></div>
                 </div>
             </div>
         </main>
     </div>
-    
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
-    
+
     <!-- Scripts -->
     <!-- Main App Logic -->
     <script src="/static/js/api.js?v=3"></script>
     <script src="/static/js/toast.js"></script>
-    <script src="/static/js/app.js?v=4"></script>
+    <script src="/static/js/app.js?v=5"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             window.app = new SurveillXApp();
@@ -131,4 +134,5 @@
         });
     </script>
 </body>
+
 </html>

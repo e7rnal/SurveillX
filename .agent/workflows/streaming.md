@@ -4,23 +4,37 @@ description: Rules for implementing video streaming in SurveillX
 
 # Streaming Implementation Rules
 
-## Core Rule: WebRTC is the chosen technology
-- When the user says "WebRTC", we are using **WebRTC**. Do NOT suggest switching to Socket.IO, HTTP POST, or any other protocol as a replacement.
-- If WebRTC has issues, **fix the issues** — do not pivot to a different technology.
-- The user has another AI handling the Windows client code. Do NOT modify or create Windows client code unless explicitly asked.
+## Core Rule: Latency < 200ms
+- Surveillance latency MUST be below 200ms end-to-end.
+- FastRTC (port 8080) is the primary streaming mode — use it by default.
+- JPEG WS (port 8443) is the fallback if FastRTC is unavailable.
+- The user has another AI handling the Windows client code. Do NOT modify Windows client code unless explicitly asked.
 
-## Known Issues & Solutions (from docs/webrtc_postmortem.md)
-- **asyncio in Flask**: Use a persistent background event loop with `asyncio.run_coroutine_threadsafe()`, never `asyncio.run()`.
-- **NAT traversal**: Always configure TURN server. The EC2 coturn config, credentials, and UDP ports are already set up.
-- **aiortc track.recv() 0 frames**: This was caused by TURN relay on the same machine. Solution: use an external TURN provider OR switch the server-side WebRTC library.
-- **Socket.IO browser disconnect**: The WebSocket upgrade can fail; always allow polling fallback with `transports: ['polling', 'websocket']`.
+## Architecture
+```
+Windows Client (JPEG/WS) ──► EC2 Server (FastRTC 8080 / JPEG WS 8443) ──► Nginx ──► Browser
+```
 
-## Architecture Reference
-```
-Windows Client (WebRTC) ──► EC2 Server ──► Browser Live Monitor
-```
-- Backend: Flask + Flask-SocketIO on port 5000
-- WebRTC blueprint: api/webrtc.py (prefix: /webrtc)
-- Stream handler: services/stream_handler.py (Socket.IO /stream namespace)
-- Frontend: static/js/app.js → connectSocket() → displayFrame()
-- TURN server: coturn on EC2 (port 3478, credentials in /etc/turnserver.conf)
+### Server-side
+- FastRTC: `fastrtc_server.py` (FastAPI/uvicorn on port 8080)
+  - Client sends to `/ws/stream` (hello + frames)
+  - Viewers connect to `/ws/view`
+  - Nginx `/ws/fastrtc` → `http://127.0.0.1:8080/ws/view`
+- JPEG WS Hub: `gst_streaming_server.py` (websockets on port 8443)
+  - Client sends with `{type:"hello", mode:"jpeg"}`
+  - Viewers send `{type:"viewer"}`
+  - Nginx `/ws/stream` → `http://127.0.0.1:8443`
+- Both servers use `asyncio.gather` for parallel broadcast
+- Both inject `server_time` (ms) in frame messages for latency measurement
+
+### Browser-side
+- `app.js` → `connectStream()` → `displayFrame()`
+- Uses Blob URL (not base64 data: URI) for faster frame rendering
+- Latency calculated from `data.server_time` or `data.timestamp`
+- Color coding: green < 300ms, yellow < 600ms, red > 600ms
+
+## Known Issues & Solutions
+- **asyncio in Flask**: Use `asyncio.run_coroutine_threadsafe()`, never `asyncio.run()`.
+- **NAT traversal**: Always configure TURN server. EC2 coturn on port 3478.
+- **FastRTC 403 through Nginx**: Caused by path mismatch. Nginx must proxy `/ws/fastrtc` to `/ws/view` on port 8080, NOT to the root.
+- **Socket.IO disconnect**: Allow polling fallback: `transports: ['polling', 'websocket']`.
