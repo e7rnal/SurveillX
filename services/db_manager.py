@@ -319,22 +319,22 @@ class DBManager:
         return result[0]['id'] if result else None
     
     def get_pending_enrollments(self):
-        """Get all pending enrollments"""
+        """Get all pending enrollments (with or without token)"""
         query = """
-            SELECT pe.*, et.email
+            SELECT pe.*, COALESCE(et.email, '') as email
             FROM pending_enrollments pe
-            JOIN enrollment_tokens et ON pe.token_id = et.id
+            LEFT JOIN enrollment_tokens et ON pe.token_id = et.id
             WHERE pe.status = 'pending'
             ORDER BY pe.submitted_at DESC
         """
         return self.execute_query(query)
     
     def get_pending_enrollment_by_id(self, enrollment_id):
-        """Get pending enrollment by ID"""
+        """Get pending enrollment by ID (with or without token)"""
         query = """
-            SELECT pe.*, et.email
+            SELECT pe.*, COALESCE(et.email, '') as email
             FROM pending_enrollments pe
-            JOIN enrollment_tokens et ON pe.token_id = et.id
+            LEFT JOIN enrollment_tokens et ON pe.token_id = et.id
             WHERE pe.id = %s
         """
         results = self.execute_query(query, (enrollment_id,))
