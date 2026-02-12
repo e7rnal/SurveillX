@@ -57,7 +57,7 @@ class DBManager:
         """Get all students"""
         query = """
             SELECT 
-                id, name, roll_no, contact_no, class, created_at,
+                *,
                 (face_encoding IS NOT NULL) as has_face_encoding
             FROM students 
             ORDER BY created_at DESC

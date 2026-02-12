@@ -1280,8 +1280,8 @@ class SurveillXApp {
                         </div>
                         <div class="form-group">
                             <label>Face Data</label>
-                            <span class="badge ${student.face_encoding ? 'success' : 'warning'}">
-                                ${student.face_encoding ? 'Registered' : 'Not Registered'}
+                            <span class="badge ${student.has_face_encoding ? 'success' : 'warning'}">
+                                ${student.has_face_encoding ? 'Registered' : 'Not Registered'}
                             </span>
                         </div>
                     </div>
