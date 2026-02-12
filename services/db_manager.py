@@ -324,7 +324,7 @@ class DBManager:
             SELECT pe.*, COALESCE(et.email, '') as email
             FROM pending_enrollments pe
             LEFT JOIN enrollment_tokens et ON pe.token_id = et.id
-            WHERE pe.status = 'pending'
+            WHERE pe.status IN ('pending', 'pending_approval')
             ORDER BY pe.submitted_at DESC
         """
         return self.execute_query(query)

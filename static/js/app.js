@@ -915,6 +915,10 @@ class SurveillXApp {
                     return;
                 }
 
+                // Store enrollment data for review modal
+                this._pendingEnrollments = {};
+                data.enrollments.forEach(e => { this._pendingEnrollments[e.id] = e; });
+
                 content.innerHTML = `
                     <table class="data-table">
                         <thead>
@@ -939,11 +943,14 @@ class SurveillXApp {
                                     <td>${e.roll_no || '-'}</td>
                                     <td>${this.timeAgo(e.submitted_at)}</td>
                                     <td>
+                                        <button class="btn small" onclick="app.reviewEnrollment(${e.id})" style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);margin-right:4px;">
+                                            <i class="fa-solid fa-eye"></i> Review
+                                        </button>
                                         <button class="btn small success" onclick="app.approveEnrollment(${e.id})">
-                                            <i class="fa-solid fa-check"></i> Approve
+                                            <i class="fa-solid fa-check"></i>
                                         </button>
                                         <button class="btn small danger" onclick="app.rejectEnrollment(${e.id})">
-                                            <i class="fa-solid fa-times"></i> Reject
+                                            <i class="fa-solid fa-times"></i>
                                         </button>
                                     </td>
                                 </tr>
@@ -955,6 +962,93 @@ class SurveillXApp {
                 content.innerHTML = `<div class="error-state">Failed to load: ${error.message}</div>`;
             }
         }
+    }
+
+    reviewEnrollment(id) {
+        const e = this._pendingEnrollments?.[id];
+        if (!e) { Toast.error('Enrollment data not found'); return; }
+
+        // Parse sample_images
+        let photos = [];
+        if (e.sample_images) {
+            try {
+                photos = typeof e.sample_images === 'string' ? JSON.parse(e.sample_images) : e.sample_images;
+            } catch (err) { photos = []; }
+        }
+        const poseLabels = ['Front Face', 'Left Turn', 'Right Turn', 'Look Up', 'Neutral'];
+
+        // Remove old modal
+        document.getElementById('enrollment-review-modal')?.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'enrollment-review-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);';
+        modal.innerHTML = `
+            <div style="background:#1e293b;border-radius:1rem;padding:1.5rem;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 style="color:white;font-size:1.1rem;margin:0;"><i class="fa-solid fa-user-clock" style="color:#818cf8;margin-right:0.5rem;"></i>Enrollment Review</h3>
+                    <button onclick="document.getElementById('enrollment-review-modal').remove()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;">&times;</button>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
+                    <div style="background:#0f172a;padding:0.75rem;border-radius:0.5rem;">
+                        <div style="color:#64748b;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;">Name</div>
+                        <div style="color:white;font-weight:600;margin-top:0.25rem;">${e.name}</div>
+                    </div>
+                    <div style="background:#0f172a;padding:0.75rem;border-radius:0.5rem;">
+                        <div style="color:#64748b;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;">Roll No</div>
+                        <div style="color:white;font-weight:600;margin-top:0.25rem;">${e.roll_no || '-'}</div>
+                    </div>
+                    <div style="background:#0f172a;padding:0.75rem;border-radius:0.5rem;">
+                        <div style="color:#64748b;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;">Class</div>
+                        <div style="color:white;font-weight:600;margin-top:0.25rem;">${e.class || '-'}</div>
+                    </div>
+                    <div style="background:#0f172a;padding:0.75rem;border-radius:0.5rem;">
+                        <div style="color:#64748b;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;">Contact</div>
+                        <div style="color:white;font-weight:600;margin-top:0.25rem;">${e.contact_no || '-'}</div>
+                    </div>
+                    <div style="background:#0f172a;padding:0.75rem;border-radius:0.5rem;">
+                        <div style="color:#64748b;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;">Email</div>
+                        <div style="color:white;font-weight:600;margin-top:0.25rem;">${e.email || '-'}</div>
+                    </div>
+                    <div style="background:#0f172a;padding:0.75rem;border-radius:0.5rem;">
+                        <div style="color:#64748b;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;">Submitted</div>
+                        <div style="color:white;font-weight:600;margin-top:0.25rem;">${this.timeAgo(e.submitted_at)}</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:1rem;">
+                    <div style="color:#94a3b8;font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;"><i class="fa-solid fa-camera" style="margin-right:0.4rem;"></i>Face Photos (${photos.length}/5)</div>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.4rem;">
+                        ${photos.length > 0 ? photos.map((p, i) => {
+            const src = typeof p === 'object' ? (p.data || '') : p;
+            return `
+                                <div style="aspect-ratio:1;background:#0f172a;border-radius:0.4rem;overflow:hidden;border:2px solid rgba(34,197,94,0.4);position:relative;">
+                                    <img src="${src}" style="width:100%;height:100%;object-fit:cover;" alt="${poseLabels[i] || 'Photo'}">
+                                    <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:0.15rem;text-align:center;">
+                                        <span style="font-size:0.5rem;color:#94a3b8;">${poseLabels[i] || ''}</span>
+                                    </div>
+                                </div>`;
+        }).join('') : '<div style="grid-column:1/-1;text-align:center;color:#64748b;padding:1rem;">No photos available</div>'}
+                    </div>
+                </div>
+
+                ${e.face_encoding ? '<div style="display:flex;align-items:center;gap:0.4rem;color:#22c55e;font-size:0.8rem;margin-bottom:1rem;"><i class="fa-solid fa-shield-check"></i> Face encoding pre-computed</div>' : '<div style="display:flex;align-items:center;gap:0.4rem;color:#f59e0b;font-size:0.8rem;margin-bottom:1rem;"><i class="fa-solid fa-exclamation-triangle"></i> Face encoding will be computed on approval</div>'}
+
+                <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+                    <button onclick="document.getElementById('enrollment-review-modal').remove();app.rejectEnrollment(${e.id})" style="padding:0.6rem 1.25rem;border-radius:0.5rem;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);cursor:pointer;font-weight:600;font-family:inherit;">
+                        <i class="fa-solid fa-times"></i> Reject
+                    </button>
+                    <button onclick="document.getElementById('enrollment-review-modal').remove();app.approveEnrollment(${e.id})" style="padding:0.6rem 1.25rem;border-radius:0.5rem;background:#22c55e;color:white;border:none;cursor:pointer;font-weight:600;font-family:inherit;">
+                        <i class="fa-solid fa-check"></i> Approve
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Close on backdrop click
+        modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
     }
 
     async approveEnrollment(id) {
