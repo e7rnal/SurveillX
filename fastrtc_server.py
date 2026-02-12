@@ -16,6 +16,15 @@ import json
 import base64
 import logging
 import time
+import cv2
+import numpy as np
+import os
+import sys
+
+# Add parent dir to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from services.recognition_handler import RecognitionHandler
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +53,9 @@ last_frame_data: str | None = None
 # Latency tracking
 latency_samples: list[float] = []
 MAX_LATENCY_SAMPLES = 50
+
+# Recognition handler (initialized on startup)
+recognition_handler: RecognitionHandler | None = None
 
 
 async def broadcast_to_viewers(message: str):
@@ -120,6 +132,20 @@ async def ws_stream(websocket: WebSocket):
                 raw = base64.b64decode(frame_b64)
                 logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes, viewers={len(viewers)}")
 
+            # Run face recognition on frame
+            recognition_data = None
+            if recognition_handler:
+                try:
+                    # Decode JPEG to numpy array
+                    jpg_bytes = base64.b64decode(frame_b64)
+                    jpg_arr = np.frombuffer(jpg_bytes, dtype=np.uint8)
+                    frame_bgr = cv2.imdecode(jpg_arr, cv2.IMREAD_COLOR)
+                    
+                    if frame_bgr is not None:
+                        recognition_data = recognition_handler.process_frame(frame_bgr)
+                except Exception as e:
+                    logger.error(f"Recognition error: {e}")
+
             # Prepare broadcast with server timestamp for latency measurement
             broadcast_msg = json.dumps({
                 "type": "frame",
@@ -129,6 +155,7 @@ async def ws_stream(websocket: WebSocket):
                 "server_time": time.time() * 1000,
                 "width": msg.get("width", 0),
                 "height": msg.get("height", 0),
+                "recognition": recognition_data,  # Include recognition results
             })
 
             last_frame_data = broadcast_msg
@@ -200,9 +227,36 @@ async def ws_view(websocket: WebSocket):
 # ---------- Startup ----------
 @app.on_event("startup")
 async def startup():
+    global recognition_handler
     import os
     os.makedirs("logs", exist_ok=True)
     logger.info("✅ FastRTC streaming server starting on port 8080")
+    
+    # Initialize face recognition
+    try:
+        from services.face_recognition_service import FaceRecognitionService
+        from services.db_manager import DBManager
+        from config import Config
+        
+        config = Config()
+        db = DBManager(config)
+        face_service = FaceRecognitionService(config)
+        
+        # Load enrolled students into face service
+        students = db.get_all_students()
+        for student in students:
+            if student.get('face_encoding'):
+                face_service.add_known_face(
+                    student['id'],
+                    student['name'],
+                    student['face_encoding']
+                )
+        
+        recognition_handler = RecognitionHandler(face_service, db)
+        logger.info(f"✅ Face recognition initialized with {len(students)} students")
+    except Exception as e:
+        logger.error(f"Failed to initialize face recognition: {e}")
+        recognition_handler = None
 
 
 if __name__ == "__main__":

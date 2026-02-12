@@ -114,6 +114,27 @@ class DBManager:
     
     # ==================== ATTENDANCE OPERATIONS ====================
     
+    def check_recent_attendance(self, student_id, minutes=30):
+        """
+        Check if student has attendance marked recently
+        
+        Args:
+            student_id: Student ID to check
+            minutes: Time window in minutes (default 30)
+            
+        Returns:
+            True if attendance exists within the time window, False otherwise
+        """
+        query = """
+            SELECT id FROM attendance_logs
+            WHERE student_id = %s
+            AND timestamp > NOW() - INTERVAL '%s minutes'
+            ORDER BY timestamp DESC
+            LIMIT 1
+        """
+        result = self.execute_query(query, (student_id, minutes))
+        return len(result) > 0
+
     def mark_attendance(self, student_id, timestamp=None):
         """Mark student attendance"""
         if timestamp is None:
