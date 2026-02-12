@@ -1323,6 +1323,11 @@ class SurveillXApp {
             this.updateConnectionStatus(false);
         });
 
+        this.socket.on('connect_error', (err) => {
+            console.error('Socket connection error:', err);
+            this.updateConnectionStatus(false);
+        });
+
         this.socket.on('frame', (data) => {
             this.displayFrame(data);
         });

@@ -120,13 +120,15 @@
     <div class="toast-container" id="toast-container"></div>
     
     <!-- Scripts -->
-    <script src="/static/js/api.js"></script>
+    <!-- Main App Logic -->
+    <script src="/static/js/api.js?v=2"></script>
     <script src="/static/js/toast.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=3"></script>
     <script>
-        // Initialize app
-        const app = new SurveillXApp();
-        app.init();
+        document.addEventListener('DOMContentLoaded', () => {
+            window.app = new SurveillXApp();
+            window.app.init();
+        });
     </script>
 </body>
 </html>
