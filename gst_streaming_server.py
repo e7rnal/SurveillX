@@ -249,6 +249,8 @@ async def handle_client(websocket, path=None):
         return
     logger.info("Pipeline PLAYING — waiting for SDP offer...")
 
+    sdp_done = False
+
     try:
         async for message in websocket:
             data = json.loads(message)
@@ -297,7 +299,7 @@ async def handle_client(websocket, path=None):
                     "sdp": answer_sdp,
                 }))
                 logger.info("Sent SDP answer to client")
-                logger.debug(f"Answer SDP:\n{answer_sdp[:200]}...")
+                sdp_done = True
 
             elif data["type"] == "ice":
                 # Add remote ICE candidate from client
@@ -306,6 +308,16 @@ async def handle_client(websocket, path=None):
                 if candidate:
                     webrtcbin.emit("add-ice-candidate", mline, candidate)
                     logger.debug(f"Added ICE candidate: {candidate[:60]}...")
+
+        # The async for loop exits when the client stops sending messages.
+        # But the WebSocket is still open! Keep it alive for media streaming.
+        if sdp_done:
+            logger.info("SDP exchange complete. Keeping connection alive for media...")
+            # Keep alive: wait until the WebSocket actually closes
+            try:
+                await websocket.wait_closed()
+            except Exception:
+                pass
 
     except websockets.exceptions.ConnectionClosed as e:
         logger.info(f"Client disconnected: {e}")
