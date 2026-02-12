@@ -1309,37 +1309,59 @@ class SurveillXApp {
     // ============ WEBSOCKET ============
 
     connectSocket() {
-        if (typeof io === 'undefined') return;
+        // Connect to streaming hub directly via WebSocket (port 8443)
+        // This bypasses Flask/Socket.IO for minimal latency
+        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const streamUrl = `${wsProtocol}//${location.hostname}:8443`;
 
-        this.socket = io('/stream');
+        console.log(`Connecting to stream hub: ${streamUrl}`);
+        this.streamWs = new WebSocket(streamUrl);
 
-        this.socket.on('connect', () => {
-            console.log('WebSocket connected');
+        this.streamWs.onopen = () => {
+            console.log('Stream WebSocket connected');
+            // Identify as a viewer
+            this.streamWs.send(JSON.stringify({ type: 'viewer' }));
             this.updateConnectionStatus(true);
-        });
+        };
 
-        this.socket.on('disconnect', () => {
-            console.log('WebSocket disconnected');
+        this.streamWs.onclose = () => {
+            console.log('Stream WebSocket disconnected');
             this.updateConnectionStatus(false);
-        });
+            this._streamActive = false;
+            // Auto-reconnect after 3 seconds
+            setTimeout(() => this.connectSocket(), 3000);
+        };
 
-        this.socket.on('connect_error', (err) => {
-            console.error('Socket connection error:', err);
+        this.streamWs.onerror = (err) => {
+            console.error('Stream WebSocket error:', err);
             this.updateConnectionStatus(false);
-        });
+        };
 
-        this.socket.on('frame', (data) => {
-            this.displayFrame(data);
-        });
+        this.streamWs.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'frame') {
+                    this.displayFrame(data);
+                } else if (data.type === 'status') {
+                    this.updateConnectionStatus(data.streaming);
+                } else if (data.type === 'stream_ended') {
+                    this.updateConnectionStatus(false);
+                    this._streamActive = false;
+                }
+            } catch (e) {
+                console.error('Stream message parse error:', e);
+            }
+        };
 
-        this.socket.on('detection', (data) => {
-            this.handleDetection(data);
-        });
-
-        this.socket.on('new_alert', (data) => {
-            Toast.warning(`New Alert: ${this.formatEventType(data.type)}`, 'Security Alert');
-            this.showDesktopNotification(`Alert: ${this.formatEventType(data.type)}`);
-        });
+        // Also keep Socket.IO for alerts/detections (non-video events)
+        if (typeof io !== 'undefined') {
+            this.socket = io('/stream');
+            this.socket.on('detection', (data) => this.handleDetection(data));
+            this.socket.on('new_alert', (data) => {
+                Toast.warning(`New Alert: ${this.formatEventType(data.type)}`, 'Security Alert');
+                this.showDesktopNotification(`Alert: ${this.formatEventType(data.type)}`);
+            });
+        }
     }
 
     updateConnectionStatus(connected) {

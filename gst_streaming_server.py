@@ -1,13 +1,14 @@
 """
-SurveillX Streaming Server
-Receives JPEG frames from Windows client via WebSocket.
-Forwards them to Flask via HTTP POST for browser display.
+SurveillX Streaming Server — Low-Latency WebSocket Hub
+Receives JPEG frames from Windows client, broadcasts to browser viewers.
+No Flask/HTTP/Socket.IO in the frame path — minimal latency.
 
 Usage:
     python gst_streaming_server.py
 
 Architecture:
-    Windows Client --WebSocket (JPEG)--> This server --> Flask :5000 --> Browser
+    Windows Client --WS frame--> This server --WS broadcast--> Browser(s)
+    (Flask is only used for dashboard HTML, REST API, auth — not video)
 """
 import asyncio
 import json
@@ -16,7 +17,6 @@ import logging
 import time
 import sys
 
-import requests as req_lib
 import websockets
 
 # ---------- Logging ----------
@@ -32,62 +32,59 @@ logger = logging.getLogger("gst-streaming")
 
 # ---------- Config ----------
 SIGNALING_PORT = 8443
-FLASK_URL = "http://localhost:5000"
-FLASK_FRAME_ENDPOINT = f"{FLASK_URL}/api/stream/frame"
 
-# ---------- HTTP Session (for frame forwarding to Flask) ----------
-http_session = req_lib.Session()
-http_session.headers.update({"Content-Type": "application/json"})
-
-# ---------- Global State ----------
+# ---------- Connection Registry ----------
+viewers = set()       # Browser WebSocket connections
+streamer = None       # The camera client connection
 frame_count = 0
-current_ws = None
+last_frame_data = None  # Cache last frame for new viewer connections
 
 
-def forward_to_flask(frame_b64, camera_id=1, client_timestamp=""):
-    """POST a base64-encoded JPEG frame to Flask for Socket.IO broadcast."""
+async def broadcast_to_viewers(message):
+    """Send a message to all connected browser viewers."""
+    if not viewers:
+        return
+    # Use gather for parallel sends
+    dead = set()
+    for ws in viewers.copy():
+        try:
+            await ws.send(message)
+        except Exception:
+            dead.add(ws)
+    viewers.difference_update(dead)
+
+
+async def handle_connection(websocket, path=None):
+    """Handle any incoming WebSocket connection (client or viewer)."""
+    global streamer, frame_count, last_frame_data
+
+    # Wait for the first message to determine connection type
     try:
-        r = http_session.post(
-            FLASK_FRAME_ENDPOINT,
-            json={"frame": frame_b64, "camera_id": camera_id, "timestamp": client_timestamp},
-            timeout=2,
-        )
-        if r.status_code != 200 and frame_count % 100 == 0:
-            logger.warning(f"Frame POST failed: {r.status_code}")
+        first_msg = await asyncio.wait_for(websocket.recv(), timeout=10)
+        data = json.loads(first_msg)
     except Exception as e:
-        if frame_count % 100 == 0:
-            logger.error(f"Frame forward error: {e}")
+        logger.warning(f"Connection failed handshake: {e}")
+        return
 
+    msg_type = data.get("type", "")
 
-# ---------- WebSocket Handler ----------
-async def handle_client(websocket, path=None):
-    """Handle WebSocket connection from Windows streaming client."""
-    global current_ws, frame_count
+    if msg_type == "hello" and data.get("mode") == "jpeg":
+        # ===== CAMERA CLIENT (streamer) =====
+        streamer = websocket
+        frame_count = 0
+        w = data.get("width", 0)
+        h = data.get("height", 0)
+        fps = data.get("fps", 0)
+        logger.info(f"📷 Camera client connected: {w}x{h} @ {fps}fps")
+        await websocket.send(json.dumps({"type": "ready", "status": "ok"}))
 
-    current_ws = websocket
-    frame_count = 0
-    logger.info("Client connected via WebSocket")
+        try:
+            async for message in websocket:
+                msg = json.loads(message)
+                if msg.get("type") != "frame":
+                    continue
 
-    try:
-        async for message in websocket:
-            data = json.loads(message)
-            msg_type = data.get("type", "")
-
-            if msg_type == "hello":
-                # Client handshake
-                mode = data.get("mode", "unknown")
-                w = data.get("width", 0)
-                h = data.get("height", 0)
-                fps = data.get("fps", 0)
-                logger.info(f"Client hello: mode={mode}, {w}x{h} @ {fps}fps")
-                await websocket.send(json.dumps({"type": "ready", "status": "ok"}))
-
-            elif msg_type == "frame":
-                # Receive JPEG frame from client
-                frame_b64 = data.get("frame", "")
-                camera_id = data.get("camera_id", 1)
-                client_ts = data.get("timestamp", "")
-
+                frame_b64 = msg.get("frame", "")
                 if not frame_b64:
                     continue
 
@@ -95,39 +92,88 @@ async def handle_client(websocket, path=None):
 
                 if frame_count == 1:
                     raw = base64.b64decode(frame_b64)
-                    logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes")
+                    logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes, viewers={len(viewers)}")
 
-                # Forward to Flask for browser display
-                forward_to_flask(frame_b64, camera_id, client_ts)
+                # Prepare broadcast message (include client timestamp for latency measurement)
+                broadcast_msg = json.dumps({
+                    "type": "frame",
+                    "frame": frame_b64,
+                    "camera_id": msg.get("camera_id", 1),
+                    "timestamp": msg.get("timestamp", ""),
+                    "width": msg.get("width", 0),
+                    "height": msg.get("height", 0),
+                })
+
+                # Cache for new viewers joining mid-stream
+                last_frame_data = broadcast_msg
+
+                # Broadcast to all viewers
+                await broadcast_to_viewers(broadcast_msg)
 
                 if frame_count % 200 == 0:
-                    logger.info(f"Processed {frame_count} frames")
+                    logger.info(f"Processed {frame_count} frames, viewers={len(viewers)}")
 
-    except websockets.exceptions.ConnectionClosed as e:
-        logger.info(f"Client disconnected: {e}")
-    except Exception as e:
-        logger.error(f"Error in client handler: {e}", exc_info=True)
-    finally:
-        logger.info(f"Session ended. Total frames: {frame_count}")
-        current_ws = None
+        except websockets.exceptions.ConnectionClosed as e:
+            logger.info(f"Camera client disconnected: {e}")
+        finally:
+            streamer = None
+            frame_count = 0
+            # Notify viewers that stream ended
+            try:
+                await broadcast_to_viewers(json.dumps({"type": "stream_ended"}))
+            except Exception:
+                pass
+            logger.info("Camera client session ended")
+
+    elif msg_type == "viewer":
+        # ===== BROWSER VIEWER =====
+        viewers.add(websocket)
+        logger.info(f"👁 Viewer connected (total: {len(viewers)})")
+
+        # Send current status
+        await websocket.send(json.dumps({
+            "type": "status",
+            "streaming": streamer is not None,
+            "frames_processed": frame_count,
+        }))
+
+        # Send last frame if available (so viewer doesn't see blank)
+        if last_frame_data:
+            try:
+                await websocket.send(last_frame_data)
+            except Exception:
+                pass
+
+        try:
+            # Keep connection alive, listen for pings/commands
+            async for message in websocket:
+                # Viewers might send commands in the future
+                pass
+        except websockets.exceptions.ConnectionClosed:
+            pass
+        finally:
+            viewers.discard(websocket)
+            logger.info(f"👁 Viewer disconnected (total: {len(viewers)})")
+
+    else:
+        logger.warning(f"Unknown connection type: {msg_type}")
+        await websocket.close(1008, "Unknown connection type. Send {type: 'hello', mode: 'jpeg'} or {type: 'viewer'}")
 
 
 # ---------- Main ----------
 async def main():
-    # Check Flask is reachable
-    try:
-        r = http_session.get(f"{FLASK_URL}/health", timeout=3)
-        if r.status_code == 200:
-            logger.info(f"Flask is reachable at {FLASK_URL}")
-        else:
-            logger.warning(f"Flask returned {r.status_code}")
-    except Exception as e:
-        logger.warning(f"Flask not reachable: {e} (will retry on first frame)")
-
-    # Start WebSocket server
-    logger.info(f"WebSocket server starting on ws://0.0.0.0:{SIGNALING_PORT}")
-    async with websockets.serve(handle_client, "0.0.0.0", SIGNALING_PORT):
-        logger.info(f"✅ Streaming server ready on port {SIGNALING_PORT}")
+    logger.info(f"WebSocket hub starting on ws://0.0.0.0:{SIGNALING_PORT}")
+    async with websockets.serve(
+        handle_connection,
+        "0.0.0.0",
+        SIGNALING_PORT,
+        max_size=2 * 1024 * 1024,  # 2MB max message (for large JPEG frames)
+        ping_interval=20,
+        ping_timeout=10,
+    ):
+        logger.info(f"✅ Streaming hub ready on port {SIGNALING_PORT}")
+        logger.info(f"   Camera clients: ws://server:{SIGNALING_PORT}")
+        logger.info(f"   Browser viewers: ws://server:{SIGNALING_PORT}")
         await asyncio.Future()  # run forever
 
 
