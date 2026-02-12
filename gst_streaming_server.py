@@ -16,8 +16,16 @@ import base64
 import logging
 import time
 import sys
+import cv2
+import numpy as np
+import os
 
 import websockets
+
+# Add parent dir to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from services.recognition_handler import RecognitionHandler
 
 # ---------- Logging ----------
 logging.basicConfig(
@@ -38,6 +46,9 @@ viewers = set()       # Browser WebSocket connections
 streamer = None       # The camera client connection
 frame_count = 0
 last_frame_data = None  # Cache last frame for new viewer connections
+
+# Recognition handler (initialized in main)
+recognition_handler = None
 
 
 async def broadcast_to_viewers(message):
@@ -95,6 +106,20 @@ async def handle_connection(websocket, path=None):
                     raw = base64.b64decode(frame_b64)
                     logger.info(f"🎉 FIRST FRAME! size={len(raw)} bytes, viewers={len(viewers)}")
 
+                # Run face recognition on frame
+                recognition_data = None
+                if recognition_handler:
+                    try:
+                        # Decode JPEG to numpy array
+                        jpg_bytes = base64.b64decode(frame_b64)
+                        jpg_arr = np.frombuffer(jpg_bytes, dtype=np.uint8)
+                        frame_bgr = cv2.imdecode(jpg_arr, cv2.IMREAD_COLOR)
+                        
+                        if frame_bgr is not None:
+                            recognition_data = recognition_handler.process_frame(frame_bgr)
+                    except Exception as e:
+                        logger.error(f"Recognition error: {e}")
+
                 # Prepare broadcast message with server timestamp for latency
                 broadcast_msg = json.dumps({
                     "type": "frame",
@@ -104,6 +129,7 @@ async def handle_connection(websocket, path=None):
                     "server_time": time.time() * 1000,
                     "width": msg.get("width", 0),
                     "height": msg.get("height", 0),
+                    "recognition": recognition_data,  # Include recognition results
                 })
 
                 # Cache for new viewers joining mid-stream
@@ -164,6 +190,34 @@ async def handle_connection(websocket, path=None):
 
 # ---------- Main ----------
 async def main():
+    global recognition_handler
+    
+    # Initialize face recognition
+    try:
+        from services.face_recognition_service import FaceRecognitionService
+        from services.db_manager import DBManager
+        from config import Config
+        
+        config = Config()
+        db = DBManager(config)
+        face_service = FaceRecognitionService(config)
+        
+        # Load enrolled students into face service
+        students = db.get_all_students()
+        for student in students:
+            if student.get('face_encoding'):
+                face_service.add_known_face(
+                    student['id'],
+                    student['name'],
+                    student['face_encoding']
+                )
+        
+        recognition_handler = RecognitionHandler(face_service, db)
+        logger.info(f"✅ Face recognition initialized with {len(students)} students")
+    except Exception as e:
+        logger.error(f"Failed to initialize face recognition: {e}")
+        recognition_handler = None
+    
     logger.info(f"WebSocket hub starting on ws://0.0.0.0:{SIGNALING_PORT}")
     async with websockets.serve(
         handle_connection,
