@@ -1914,6 +1914,39 @@ class SurveillXApp {
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
+
+            // Draw face recognition overlays
+            if (data.recognition && data.recognition.recognitions && data.recognition.recognitions.length > 0) {
+                const recognitions = data.recognition.recognitions;
+
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 16px Inter, sans-serif';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 4;
+
+                recognitions.forEach(rec => {
+                    const [x, y, w, h] = rec.bbox;
+
+                    // Draw bounding box
+                    ctx.strokeRect(x, y, w, h);
+
+                    // Draw name label background
+                    const label = `${rec.name} (${(rec.confidence * 100).toFixed(0)}%)`;
+                    const metrics = ctx.measureText(label);
+                    const labelWidth = metrics.width + 16;
+                    const labelHeight = 28;
+
+                    ctx.fillStyle = 'rgba(34, 197, 94, 0.9)';
+                    ctx.fillRect(x, y - labelHeight - 4, labelWidth, labelHeight);
+
+                    // Draw name text
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(label, x + 8, y - 10);
+                });
+            }
+
             URL.revokeObjectURL(url);  // release memory immediately
 
             // Update resolution display
