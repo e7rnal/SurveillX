@@ -1,10 +1,11 @@
 """
-SurveillX Windows Client — Direct JPEG over WebSocket
-Sends webcam frames as JPEG over WebSocket to the server.
-Simple, reliable, full quality control — no WebRTC codec issues.
+SurveillX Windows Client — Dual-Mode JPEG Streaming
+Sends webcam frames as JPEG over WebSocket.
+Supports both JPEG-WS (port 8443) and FastRTC (port 8080) modes.
 
 Usage:
-    python client.py --server ws://surveillx.duckdns.org:8443 --camera 0
+    python client.py --server surveillx.duckdns.org --camera 0 --mode jpegws
+    python client.py --server surveillx.duckdns.org --camera 0 --mode fastrtc
 
 Requires:
     pip install opencv-python websockets
@@ -23,14 +24,26 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger("surveillx-client")
 
 # Streaming settings
-JPEG_QUALITY = 85       # 1-100, higher = better quality, larger frames
+JPEG_QUALITY = 85       # 1-100, higher = better quality
 TARGET_FPS = 15         # Target frames per second
 FRAME_WIDTH = 1280      # Capture width
 FRAME_HEIGHT = 720      # Capture height
 
+# Mode configuration
+MODES = {
+    "jpegws": {"port": 8443, "ws_path": ""},
+    "fastrtc": {"port": 8080, "ws_path": "/ws/stream"},
+}
 
-async def stream(server_url: str, camera_index: int):
+
+async def stream(server_host: str, camera_index: int, mode: str):
     """Capture webcam frames and send as JPEG over WebSocket."""
+    mode_config = MODES.get(mode)
+    if not mode_config:
+        logger.error(f"Unknown mode: {mode}. Use 'jpegws' or 'fastrtc'")
+        return
+
+    server_url = f"ws://{server_host}:{mode_config['port']}{mode_config['ws_path']}"
 
     # Open camera
     cap = cv2.VideoCapture(camera_index)
@@ -44,6 +57,7 @@ async def stream(server_url: str, camera_index: int):
     actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     logger.info(f"Camera {camera_index} opened: {actual_w}x{actual_h}")
+    logger.info(f"Mode: {mode} → {server_url}")
 
     frame_interval = 1.0 / TARGET_FPS
     frame_count = 0
@@ -53,8 +67,8 @@ async def stream(server_url: str, camera_index: int):
     while retry_count < max_retries:
         try:
             logger.info(f"Connecting to {server_url}...")
-            async with websockets.connect(server_url, ping_interval=20, ping_timeout=10) as ws:
-                # Send hello message to identify as JPEG client
+            async with websockets.connect(server_url, ping_interval=20, ping_timeout=10, max_size=2*1024*1024) as ws:
+                # Send hello
                 await ws.send(json.dumps({
                     "type": "hello",
                     "mode": "jpeg",
@@ -63,7 +77,7 @@ async def stream(server_url: str, camera_index: int):
                     "fps": TARGET_FPS,
                 }))
                 logger.info(f"Connected! Streaming at {TARGET_FPS}fps, JPEG quality={JPEG_QUALITY}")
-                retry_count = 0  # Reset on successful connection
+                retry_count = 0
 
                 while True:
                     t_start = time.time()
@@ -114,12 +128,15 @@ async def stream(server_url: str, camera_index: int):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SurveillX WebSocket Streaming Client")
-    parser.add_argument("--server", default="ws://surveillx.duckdns.org:8443")
+    parser = argparse.ArgumentParser(description="SurveillX Streaming Client")
+    parser.add_argument("--server", default="surveillx.duckdns.org",
+                       help="Server hostname (without ws:// or port)")
     parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--mode", choices=["jpegws", "fastrtc"], default="jpegws",
+                       help="Streaming mode: jpegws (port 8443) or fastrtc (port 8080)")
     args = parser.parse_args()
 
     try:
-        asyncio.run(stream(args.server, args.camera))
+        asyncio.run(stream(args.server, args.camera, args.mode))
     except KeyboardInterrupt:
         logger.info("Stopped by user.")

@@ -474,6 +474,20 @@ class SurveillXApp {
                             <span id="ws-status" class="status-badge disconnected">Disconnected</span>
                         </div>
                         <div class="status-item">
+                            <span>Mode</span>
+                            <select id="stream-mode-select" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 8px;border-radius:6px;font-size:0.8rem;cursor:pointer;">
+                                <option value="jpegws">JPEG WebSocket</option>
+                                <option value="fastrtc">FastRTC</option>
+                            </select>
+                        </div>
+                        <div class="status-item">
+                            <span>Auto-Switch</span>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                                <input type="checkbox" id="auto-switch-toggle" style="cursor:pointer;">
+                                <span id="auto-switch-label" style="font-size:0.75rem;color:var(--text-secondary);">Off</span>
+                            </label>
+                        </div>
+                        <div class="status-item">
                             <span>Resolution</span>
                             <span id="resolution-display">--</span>
                         </div>
@@ -1308,33 +1322,146 @@ class SurveillXApp {
 
     // ============ WEBSOCKET ============
 
-    connectSocket() {
-        // Connect to streaming hub directly via WebSocket (port 8443)
-        // This bypasses Flask/Socket.IO for minimal latency
-        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const streamUrl = `${wsProtocol}//${location.hostname}:8443`;
+    // Stream mode configuration
+    streamModes = {
+        jpegws: { port: 8443, wsPath: '', name: 'JPEG WebSocket' },
+        fastrtc: { port: 8080, wsPath: '/ws/view', name: 'FastRTC' },
+    };
+    currentMode = 'jpegws';
+    autoSwitch = false;
+    _reconnectTimer = null;
+    _autoSwitchTimer = null;
+    _latencyByMode = { jpegws: [], fastrtc: [] };
 
-        console.log(`Connecting to stream hub: ${streamUrl}`);
+    async initStreamConfig() {
+        // Load saved mode from server
+        try {
+            const resp = await fetch('/api/stream/config');
+            const config = await resp.json();
+            this.currentMode = config.current_mode || 'jpegws';
+            this.autoSwitch = config.auto_switch || false;
+
+            const modeSelect = document.getElementById('stream-mode-select');
+            if (modeSelect) modeSelect.value = this.currentMode;
+            const autoToggle = document.getElementById('auto-switch-toggle');
+            if (autoToggle) autoToggle.checked = this.autoSwitch;
+            const autoLabel = document.getElementById('auto-switch-label');
+            if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
+        } catch (e) {
+            console.warn('Could not load stream config:', e);
+        }
+
+        // Mode selector change handler
+        const modeSelect = document.getElementById('stream-mode-select');
+        if (modeSelect) {
+            modeSelect.addEventListener('change', async (e) => {
+                const newMode = e.target.value;
+                if (newMode !== this.currentMode) {
+                    this.currentMode = newMode;
+                    await this.saveStreamConfig();
+                    this.switchStream(newMode);
+                }
+            });
+        }
+
+        // Auto-switch toggle handler
+        const autoToggle = document.getElementById('auto-switch-toggle');
+        if (autoToggle) {
+            autoToggle.addEventListener('change', async (e) => {
+                this.autoSwitch = e.target.checked;
+                const autoLabel = document.getElementById('auto-switch-label');
+                if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
+                await this.saveStreamConfig();
+
+                if (this.autoSwitch) {
+                    this.startAutoSwitch();
+                } else {
+                    this.stopAutoSwitch();
+                }
+            });
+        }
+    }
+
+    async saveStreamConfig() {
+        try {
+            await fetch('/api/stream/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: this.currentMode, auto_switch: this.autoSwitch }),
+            });
+        } catch (e) {
+            console.warn('Could not save stream config:', e);
+        }
+    }
+
+    switchStream(mode) {
+        console.log(`Switching stream to ${mode}`);
+        // Close existing connection
+        if (this.streamWs) {
+            this.streamWs._manualClose = true;
+            this.streamWs.close();
+            this.streamWs = null;
+        }
+        if (this._reconnectTimer) {
+            clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
+        }
+        this.currentMode = mode;
+        this._streamActive = false;
+        this.frameCount = 0;
+        this.connectStream();
+    }
+
+    connectSocket() {
+        this.initStreamConfig().then(() => {
+            this.connectStream();
+
+            // Start auto-switch if enabled
+            if (this.autoSwitch) this.startAutoSwitch();
+        });
+
+        // Socket.IO for alerts/detections (non-video events)
+        if (typeof io !== 'undefined') {
+            this.socket = io('/stream');
+            this.socket.on('detection', (data) => this.handleDetection(data));
+            this.socket.on('new_alert', (data) => {
+                Toast.warning(`New Alert: ${this.formatEventType(data.type)}`, 'Security Alert');
+                this.showDesktopNotification(`Alert: ${this.formatEventType(data.type)}`);
+            });
+        }
+    }
+
+    connectStream() {
+        const mode = this.streamModes[this.currentMode];
+        if (!mode) return;
+
+        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const streamUrl = `${wsProtocol}//${location.hostname}:${mode.port}${mode.wsPath}`;
+
+        console.log(`Connecting to ${this.currentMode} stream: ${streamUrl}`);
         this.streamWs = new WebSocket(streamUrl);
+        this.streamWs._manualClose = false;
 
         this.streamWs.onopen = () => {
-            console.log('Stream WebSocket connected');
-            // Identify as a viewer
-            this.streamWs.send(JSON.stringify({ type: 'viewer' }));
+            console.log(`${this.currentMode} stream connected`);
+            // For jpegws mode, send viewer handshake
+            if (this.currentMode === 'jpegws') {
+                this.streamWs.send(JSON.stringify({ type: 'viewer' }));
+            }
             this.updateConnectionStatus(true);
         };
 
         this.streamWs.onclose = () => {
-            console.log('Stream WebSocket disconnected');
+            if (this.streamWs && this.streamWs._manualClose) return;
+            console.log(`${this.currentMode} stream disconnected`);
             this.updateConnectionStatus(false);
             this._streamActive = false;
-            // Auto-reconnect after 3 seconds
-            setTimeout(() => this.connectSocket(), 3000);
+            // Auto-reconnect
+            this._reconnectTimer = setTimeout(() => this.connectStream(), 3000);
         };
 
         this.streamWs.onerror = (err) => {
-            console.error('Stream WebSocket error:', err);
-            this.updateConnectionStatus(false);
+            console.error(`${this.currentMode} stream error:`, err);
         };
 
         this.streamWs.onmessage = (event) => {
@@ -1349,19 +1476,69 @@ class SurveillXApp {
                     this._streamActive = false;
                 }
             } catch (e) {
-                console.error('Stream message parse error:', e);
+                console.error('Message parse error:', e);
             }
         };
+    }
 
-        // Also keep Socket.IO for alerts/detections (non-video events)
-        if (typeof io !== 'undefined') {
-            this.socket = io('/stream');
-            this.socket.on('detection', (data) => this.handleDetection(data));
-            this.socket.on('new_alert', (data) => {
-                Toast.warning(`New Alert: ${this.formatEventType(data.type)}`, 'Security Alert');
-                this.showDesktopNotification(`Alert: ${this.formatEventType(data.type)}`);
-            });
+    // --- Auto-Switch Logic ---
+    startAutoSwitch() {
+        this.stopAutoSwitch();
+        console.log('Auto-switch enabled: checking latency every 30s');
+        this._autoSwitchTimer = setInterval(() => this.checkAndAutoSwitch(), 30000);
+    }
+
+    stopAutoSwitch() {
+        if (this._autoSwitchTimer) {
+            clearInterval(this._autoSwitchTimer);
+            this._autoSwitchTimer = null;
         }
+    }
+
+    async checkAndAutoSwitch() {
+        // Ping both servers and compare latency
+        const results = {};
+        for (const [mode, config] of Object.entries(this.streamModes)) {
+            try {
+                const start = Date.now();
+                const resp = await fetch(`${location.protocol}//${location.hostname}:${config.port}${config.port === 8080 ? '/health' : ''}`, {
+                    signal: AbortSignal.timeout(5000),
+                });
+                if (resp.ok) {
+                    results[mode] = Date.now() - start;
+                }
+            } catch (e) {
+                results[mode] = Infinity;
+            }
+        }
+
+        console.log('Auto-switch latency check:', results);
+
+        // Check frame-based latency samples
+        const jpegwsLatency = this._latencyByMode.jpegws.length > 0
+            ? this._latencyByMode.jpegws.reduce((a, b) => a + b) / this._latencyByMode.jpegws.length
+            : results.jpegws || Infinity;
+        const fastrtcLatency = this._latencyByMode.fastrtc.length > 0
+            ? this._latencyByMode.fastrtc.reduce((a, b) => a + b) / this._latencyByMode.fastrtc.length
+            : results.fastrtc || Infinity;
+
+        // Switch if the other mode is significantly better (>50ms improvement)
+        const currentLatency = this.currentMode === 'jpegws' ? jpegwsLatency : fastrtcLatency;
+        const otherMode = this.currentMode === 'jpegws' ? 'fastrtc' : 'jpegws';
+        const otherLatency = otherMode === 'jpegws' ? jpegwsLatency : fastrtcLatency;
+
+        if (otherLatency < currentLatency - 50 && otherLatency < Infinity) {
+            console.log(`Auto-switching from ${this.currentMode} (${Math.round(currentLatency)}ms) to ${otherMode} (${Math.round(otherLatency)}ms)`);
+            const modeSelect = document.getElementById('stream-mode-select');
+            if (modeSelect) modeSelect.value = otherMode;
+            this.currentMode = otherMode;
+            await this.saveStreamConfig();
+            this.switchStream(otherMode);
+        }
+
+        // Clear old samples
+        this._latencyByMode.jpegws = [];
+        this._latencyByMode.fastrtc = [];
     }
 
     updateConnectionStatus(connected) {
@@ -1419,7 +1596,6 @@ class SurveillXApp {
         this.lastFrameTime = now;
 
         // Calculate end-to-end latency (client capture → browser render)
-        // Uses client timestamp since browser and client are on same machine (same clock)
         let latencyMs = null;
         if (data.timestamp) {
             const clientTimeMs = parseFloat(data.timestamp) * 1000;
@@ -1436,6 +1612,13 @@ class SurveillXApp {
                     latencyDisplay.textContent = `${(latencyMs / 1000).toFixed(1)}s`;
                 }
                 latencyDisplay.style.color = latencyMs < 300 ? 'var(--success)' : latencyMs < 600 ? 'var(--warning)' : 'var(--danger)';
+            }
+            // Track latency for auto-switch comparison
+            if (this._latencyByMode && this._latencyByMode[this.currentMode]) {
+                this._latencyByMode[this.currentMode].push(latencyMs);
+                if (this._latencyByMode[this.currentMode].length > 100) {
+                    this._latencyByMode[this.currentMode].shift();
+                }
             }
         }
 

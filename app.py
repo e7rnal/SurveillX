@@ -118,19 +118,76 @@ def receive_frame():
             return jsonify({"error": "No frame data"}), 400
 
         # Broadcast to all /stream Socket.IO clients (the browser)
-        # Use server's current time for accurate latency measurement
         import time as _time
         socketio.emit('frame', {
             'frame': data['frame'],
             'camera_id': data.get('camera_id', 1),
             'timestamp': data.get('timestamp', ''),
-            'server_time': _time.time() * 1000,  # ms for JS Date.now() comparison
+            'server_time': _time.time() * 1000,
         }, namespace='/stream')
 
         return jsonify({"ok": True}), 200
     except Exception as e:
         logger.error(f"Frame receive error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# ---------- Stream Mode Configuration ----------
+import json as _json
+
+STREAM_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'stream_config.json')
+
+def _load_stream_config():
+    try:
+        with open(STREAM_CONFIG_FILE) as f:
+            return _json.load(f)
+    except Exception:
+        return {"mode": "jpegws", "auto_switch": False}
+
+def _save_stream_config(config):
+    with open(STREAM_CONFIG_FILE, 'w') as f:
+        _json.dump(config, f)
+
+@app.route('/api/stream/config', methods=['GET'])
+def get_stream_config():
+    """Return available streaming modes and current active mode."""
+    config = _load_stream_config()
+    return jsonify({
+        "current_mode": config.get("mode", "jpegws"),
+        "auto_switch": config.get("auto_switch", False),
+        "modes": {
+            "jpegws": {
+                "name": "JPEG WebSocket",
+                "port": 8443,
+                "description": "Direct JPEG frames over WebSocket",
+                "ws_path": "",
+            },
+            "fastrtc": {
+                "name": "FastRTC",
+                "port": 8080,
+                "description": "FastAPI/uvicorn WebSocket hub",
+                "ws_path": "/ws/view",
+            }
+        }
+    })
+
+@app.route('/api/stream/config', methods=['POST'])
+def set_stream_config():
+    """Set streaming mode: jpegws, fastrtc, or auto."""
+    data = request.get_json(silent=True) or {}
+    mode = data.get("mode", "").lower()
+    auto_switch = data.get("auto_switch", None)
+
+    config = _load_stream_config()
+
+    if mode and mode in ("jpegws", "fastrtc"):
+        config["mode"] = mode
+    if auto_switch is not None:
+        config["auto_switch"] = bool(auto_switch)
+
+    _save_stream_config(config)
+    logger.info(f"Stream config updated: mode={config['mode']}, auto_switch={config['auto_switch']}")
+    return jsonify({"ok": True, **config})
 
 
 # Error handlers
