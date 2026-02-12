@@ -78,6 +78,7 @@ def register_page():
     return send_from_directory('templates', 'register.html')
 
 @app.route('/templates/enroll.html')
+@app.route('/enroll')
 def enroll_page():
     return send_from_directory('templates', 'enroll.html')
 
@@ -263,6 +264,16 @@ if __name__ == '__main__':
         logger.info("Stream handler registered")
     except Exception as e:
         logger.warning(f"Stream handler not loaded: {e}")
+
+    # Initialize face recognition service (attach to app for enrollment API)
+    try:
+        from services.face_service import FaceService
+        face_svc = FaceService(db_manager=app.db, threshold=0.4, gpu_id=0)
+        app.face_service = face_svc
+        logger.info(f"Face service initialized: {face_svc.get_stats()}")
+    except Exception as e:
+        app.face_service = None
+        logger.warning(f"Face service not loaded: {e}")
     
     # Run with SocketIO
     socketio.run(
@@ -272,3 +283,4 @@ if __name__ == '__main__':
         debug=(Config.FLASK_ENV == 'development'),
         allow_unsafe_werkzeug=True
     )
+

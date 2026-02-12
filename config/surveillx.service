@@ -1,0 +1,21 @@
+[Unit]
+Description=SurveillX Flask Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/surveillx-backend
+Environment="PATH=/home/ubuntu/surveillx-backend/venv/bin:/usr/local/bin:/usr/bin"
+Environment="ORT_DISABLE_DRM=1"
+Environment="FLASK_ENV=production"
+ExecStart=/home/ubuntu/surveillx-backend/venv/bin/python3 app.py
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+StandardOutput=append:/home/ubuntu/surveillx-backend/logs/flask.log
+StandardError=append:/home/ubuntu/surveillx-backend/logs/flask.log
+
+[Install]
+WantedBy=multi-user.target

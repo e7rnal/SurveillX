@@ -1,0 +1,18 @@
+[Unit]
+Description=SurveillX FastRTC Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/surveillx-backend
+Environment="PATH=/home/ubuntu/surveillx-backend/venv/bin:/usr/local/bin:/usr/bin"
+ExecStart=/home/ubuntu/surveillx-backend/venv/bin/python3 fastrtc_server.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/ubuntu/surveillx-backend/logs/fastrtc.log
+StandardError=append:/home/ubuntu/surveillx-backend/logs/fastrtc.log
+
+[Install]
+WantedBy=multi-user.target

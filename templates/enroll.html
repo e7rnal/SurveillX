@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>SurveillX - Student Enrollment</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,17 +19,17 @@
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             min-height: 100vh;
             color: white;
-            padding: 2rem;
+            padding: 1rem;
         }
 
         .container {
-            max-width: 600px;
+            max-width: 560px;
             margin: 0 auto;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .logo {
@@ -37,67 +37,71 @@
             align-items: center;
             justify-content: center;
             gap: 0.75rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
 
         .logo i {
-            font-size: 2.5rem;
+            font-size: 2rem;
             color: #6366f1;
         }
 
         .logo span {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 700;
         }
 
         .subtitle {
             color: #94a3b8;
+            font-size: 0.9rem;
         }
 
         .card {
             background: rgba(30, 41, 59, 0.9);
             border-radius: 1rem;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .card h2 {
-            margin-bottom: 1.5rem;
-            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .form-group {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             color: #94a3b8;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
+            font-weight: 500;
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
             width: 100%;
-            padding: 0.875rem 1rem;
+            padding: 0.75rem 1rem;
             background: #0f172a;
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 0.5rem;
             color: white;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            font-family: inherit;
         }
 
-        .form-group input:focus {
+        .form-group input:focus,
+        .form-group select:focus {
             outline: none;
             border-color: #6366f1;
         }
 
-        /* Camera Section */
-        .camera-section {
-            text-align: center;
-        }
-
+        /* ---- Camera Section ---- */
         .camera-container {
             position: relative;
             background: #0f172a;
@@ -107,15 +111,72 @@
             aspect-ratio: 4/3;
         }
 
-        #video,
-        #canvas {
+        #video {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transform: scaleX(-1);
         }
 
         #canvas {
             display: none;
+        }
+
+        /* Face guide oval */
+        .face-guide {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .face-guide svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .face-guide .guide-oval {
+            fill: none;
+            stroke: rgba(99, 102, 241, 0.6);
+            stroke-width: 2;
+            stroke-dasharray: 8 4;
+            transition: stroke 0.3s;
+        }
+
+        .face-guide.detected .guide-oval {
+            stroke: #22c55e;
+            stroke-dasharray: none;
+        }
+
+        .face-guide.bad .guide-oval {
+            stroke: #ef4444;
+            stroke-dasharray: none;
+        }
+
+        /* Pose instruction overlay */
+        .pose-instruction {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+            padding: 2rem 1rem 1rem;
+            text-align: center;
+        }
+
+        .pose-instruction .pose-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .pose-instruction .pose-text {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .pose-instruction .pose-hint {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
         }
 
         .camera-overlay {
@@ -126,31 +187,79 @@
             align-items: center;
             justify-content: center;
             background: rgba(0, 0, 0, 0.7);
+            text-align: center;
         }
 
         .camera-overlay i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
             color: #64748b;
         }
 
+        .camera-overlay .hint {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Validation feedback */
+        .face-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s;
+        }
+
+        .face-status.waiting {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+        }
+
+        .face-status.detected {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+
+        .face-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        /* Camera controls */
         .camera-controls {
             display: flex;
             gap: 0.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .camera-controls select {
+            flex: 1;
+            padding: 0.6rem;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 0.8rem;
+            font-family: inherit;
         }
 
         .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.7rem 1.25rem;
             border-radius: 0.5rem;
             border: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            font-family: inherit;
         }
 
         .btn-primary {
@@ -162,40 +271,59 @@
             background: #4f46e5;
         }
 
+        .btn-success {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+        }
+
         .btn-secondary {
             background: rgba(255, 255, 255, 0.1);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .btn-success {
-            background: #22c55e;
-            color: white;
-        }
-
         .btn:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
         }
 
-        /* Photo Grid */
+        .btn-capture {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 1rem;
+            justify-content: center;
+        }
+
+        /* Photo Grid with pose labels */
         .photo-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
         }
 
         .photo-slot {
             aspect-ratio: 1;
             background: #0f172a;
-            border-radius: 0.5rem;
-            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 0.4rem;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .photo-slot.active {
+            border-color: #6366f1;
+            border-style: solid;
         }
 
         .photo-slot.filled {
@@ -209,38 +337,58 @@
             object-fit: cover;
         }
 
-        .photo-slot .number {
+        .photo-slot .pose-label {
+            font-size: 0.55rem;
             color: #64748b;
-            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-top: 0.15rem;
+        }
+
+        .photo-slot .pose-icon-small {
+            font-size: 0.9rem;
+            color: #64748b;
         }
 
         .photo-slot .remove-btn {
             position: absolute;
-            top: 2px;
-            right: 2px;
+            top: 1px;
+            right: 1px;
             background: rgba(239, 68, 68, 0.9);
             border: none;
             color: white;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
-            font-size: 0.7rem;
+            font-size: 0.55rem;
             cursor: pointer;
+            display: none;
         }
 
-        .hint {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 0.5rem;
+        .photo-slot.filled .remove-btn {
+            display: block;
+        }
+
+        .photo-slot .check-badge {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            color: #22c55e;
+            font-size: 0.7rem;
+            display: none;
+        }
+
+        .photo-slot.filled .check-badge {
+            display: block;
         }
 
         /* Progress */
         .progress-bar {
             background: #0f172a;
             border-radius: 999px;
-            height: 8px;
+            height: 6px;
             overflow: hidden;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
         }
 
         .progress-fill {
@@ -249,12 +397,18 @@
             transition: width 0.3s;
         }
 
+        .progress-text {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
         /* Messages */
         .message {
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             border-radius: 0.5rem;
             margin-bottom: 1rem;
             display: none;
+            font-size: 0.85rem;
         }
 
         .message.error {
@@ -269,20 +423,49 @@
             color: #22c55e;
         }
 
-        /* Success State */
+        .message.info {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #818cf8;
+        }
+
+        /* Success */
         .success-state {
             text-align: center;
-            padding: 3rem;
+            padding: 2rem;
         }
 
         .success-state i {
-            font-size: 4rem;
+            font-size: 3.5rem;
             color: #22c55e;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .success-state h2 {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .success-state p {
+            color: #94a3b8;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            body {
+                padding: 0.5rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .photo-grid {
+                gap: 0.25rem;
+            }
+
+            .photo-slot .pose-label {
+                font-size: 0.45rem;
+            }
         }
     </style>
 </head>
@@ -299,216 +482,426 @@
 
         <div id="message" class="message"></div>
 
-        <!-- Student Info Form -->
+        <!-- Step 1: Student Info -->
         <div class="card" id="info-section">
             <h2><i class="fa-solid fa-user"></i> Student Information</h2>
 
             <div class="form-group">
                 <label>Full Name *</label>
-                <input type="text" id="student-name" placeholder="Enter your full name" required>
+                <input type="text" id="student-name" placeholder="Enter your full name" required autocomplete="name">
             </div>
-
             <div class="form-group">
                 <label>Roll Number</label>
-                <input type="text" id="roll-number" placeholder="Enter roll number (pre-filled if provided)">
+                <input type="text" id="roll-number" placeholder="e.g., 22BCA045" autocomplete="off">
             </div>
-
             <div class="form-group">
                 <label>Class</label>
-                <input type="text" id="student-class" placeholder="e.g., BCA - II">
+                <input type="text" id="student-class" placeholder="e.g., BCA - II" autocomplete="off">
             </div>
-
             <div class="form-group">
                 <label>Contact Number</label>
-                <input type="tel" id="contact" placeholder="+91 9876543210">
+                <input type="tel" id="contact" placeholder="+91 9876543210" autocomplete="tel">
             </div>
         </div>
 
-        <!-- Camera/Photo Section -->
+        <!-- Step 2: Camera & Pose Capture -->
         <div class="card" id="camera-section">
-            <h2><i class="fa-solid fa-camera"></i> Capture Your Photos</h2>
-            <p class="hint" style="margin-bottom: 1rem;">Take 5 photos of your face from slightly different angles</p>
+            <h2><i class="fa-solid fa-camera"></i> Capture Face Photos</h2>
 
-            <div class="camera-container">
-                <video id="video" autoplay playsinline></video>
+            <!-- Camera source selector -->
+            <div class="camera-controls">
+                <select id="camera-select">
+                    <option value="">Loading cameras...</option>
+                </select>
+                <button class="btn btn-secondary" id="start-camera">
+                    <i class="fa-solid fa-video"></i> Start
+                </button>
+            </div>
+
+            <!-- Face detection status -->
+            <div class="face-status waiting" id="face-status">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Start camera to begin face capture</span>
+            </div>
+
+            <!-- Camera viewport -->
+            <div class="camera-container" id="camera-container">
+                <video id="video" autoplay playsinline muted></video>
                 <canvas id="canvas"></canvas>
+
+                <!-- Face guide overlay -->
+                <div class="face-guide" id="face-guide">
+                    <svg viewBox="0 0 640 480">
+                        <ellipse class="guide-oval" cx="320" cy="210" rx="120" ry="155" />
+                    </svg>
+                </div>
+
+                <!-- Pose instruction -->
+                <div class="pose-instruction" id="pose-instruction">
+                    <div class="pose-icon" id="pose-icon">🙂</div>
+                    <div class="pose-text" id="pose-text">Look straight at the camera</div>
+                    <div class="pose-hint" id="pose-hint">Position your face inside the oval guide</div>
+                </div>
+
+                <!-- Camera off overlay -->
                 <div class="camera-overlay" id="camera-overlay">
                     <i class="fa-solid fa-camera"></i>
-                    <span>Click "Start Camera" to begin</span>
+                    <span>Camera is off</span>
+                    <span class="hint">Click "Start" to access your camera<br>Works on Windows, Android & iOS</span>
                 </div>
             </div>
 
-            <div class="camera-controls">
-                <button class="btn btn-primary" id="start-camera">
-                    <i class="fa-solid fa-video"></i> Start Camera
-                </button>
-                <button class="btn btn-success" id="capture-btn" disabled>
-                    <i class="fa-solid fa-camera"></i> Capture Photo
-                </button>
-            </div>
+            <!-- Capture button -->
+            <button class="btn btn-success btn-capture" id="capture-btn" disabled>
+                <i class="fa-solid fa-camera"></i> Capture — <span id="pose-name-btn">Front Face</span>
+            </button>
 
+            <!-- Photo grid with pose labels -->
             <div class="photo-grid" id="photo-grid">
-                <div class="photo-slot"><span class="number">1</span></div>
-                <div class="photo-slot"><span class="number">2</span></div>
-                <div class="photo-slot"><span class="number">3</span></div>
-                <div class="photo-slot"><span class="number">4</span></div>
-                <div class="photo-slot"><span class="number">5</span></div>
+                <div class="photo-slot active" data-pose="0">
+                    <i class="fa-solid fa-face-smile pose-icon-small"></i>
+                    <span class="pose-label">Front</span>
+                    <button class="remove-btn" onclick="removePhoto(0)">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>
+                </div>
+                <div class="photo-slot" data-pose="1">
+                    <i class="fa-solid fa-arrow-left pose-icon-small"></i>
+                    <span class="pose-label">Left</span>
+                    <button class="remove-btn" onclick="removePhoto(1)">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>
+                </div>
+                <div class="photo-slot" data-pose="2">
+                    <i class="fa-solid fa-arrow-right pose-icon-small"></i>
+                    <span class="pose-label">Right</span>
+                    <button class="remove-btn" onclick="removePhoto(2)">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>
+                </div>
+                <div class="photo-slot" data-pose="3">
+                    <i class="fa-solid fa-arrow-up pose-icon-small"></i>
+                    <span class="pose-label">Up</span>
+                    <button class="remove-btn" onclick="removePhoto(3)">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>
+                </div>
+                <div class="photo-slot" data-pose="4">
+                    <i class="fa-solid fa-face-meh pose-icon-small"></i>
+                    <span class="pose-label">Neutral</span>
+                    <button class="remove-btn" onclick="removePhoto(4)">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>
+                </div>
             </div>
 
             <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                <div class="progress-fill" id="progress-fill" style="width:0%"></div>
             </div>
-            <p class="hint" id="photo-count">0 of 5 photos captured</p>
+            <p class="progress-text" id="photo-count">0 of 5 poses captured</p>
         </div>
 
-        <!-- Submit Button -->
-        <button class="btn btn-primary" id="submit-btn" style="width: 100%; padding: 1rem;" disabled>
+        <!-- Submit -->
+        <button class="btn btn-primary btn-capture" id="submit-btn" disabled>
             <i class="fa-solid fa-paper-plane"></i> Submit Enrollment
         </button>
 
-        <!-- Success State (hidden initially) -->
-        <div class="card success-state" id="success-section" style="display: none;">
+        <!-- Success State -->
+        <div class="card success-state" id="success-section" style="display:none;">
             <i class="fa-solid fa-circle-check"></i>
             <h2>Enrollment Submitted!</h2>
-            <p>Your enrollment request has been submitted and is pending approval.</p>
-            <p class="hint" style="margin-top: 1rem;">You will be notified once your enrollment is approved.</p>
+            <p>Your enrollment request has been submitted and is pending admin approval.</p>
+            <p style="margin-top:0.5rem;color:#64748b;font-size:0.8rem;">Your face data will be processed for
+                recognition once approved.</p>
         </div>
     </div>
 
     <script>
         const API_BASE = window.location.origin;
-
-        // Get token from URL
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const prefillRollNo = urlParams.get('roll_no');
 
-        // State
-        let photos = [];
-        let videoStream = null;
+        // ---- Pose definitions ----
+        const POSES = [
+            { name: 'Front Face', icon: '🙂', text: 'Look straight at the camera', hint: 'Keep your head level and centered' },
+            { name: 'Left Turn', icon: '👈', text: 'Turn your head slightly LEFT', hint: 'About 20-30° — show your left cheek' },
+            { name: 'Right Turn', icon: '👉', text: 'Turn your head slightly RIGHT', hint: 'About 20-30° — show your right cheek' },
+            { name: 'Look Up', icon: '👆', text: 'Tilt your chin UP slightly', hint: 'Small tilt up — keep face visible' },
+            { name: 'Neutral', icon: '😐', text: 'Relaxed neutral expression', hint: 'Natural face — like an ID photo' },
+        ];
 
-        // Elements
+        // ---- State ----
+        let photos = [null, null, null, null, null];
+        let currentPose = 0;
+        let videoStream = null;
+        let faceDetected = false;
+        let faceCheckInterval = null;
+
+        // ---- Elements ----
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const overlay = document.getElementById('camera-overlay');
+        const faceGuide = document.getElementById('face-guide');
         const startBtn = document.getElementById('start-camera');
         const captureBtn = document.getElementById('capture-btn');
         const submitBtn = document.getElementById('submit-btn');
         const photoGrid = document.getElementById('photo-grid');
         const progressFill = document.getElementById('progress-fill');
         const photoCount = document.getElementById('photo-count');
-        const message = document.getElementById('message');
+        const msgEl = document.getElementById('message');
+        const faceStatus = document.getElementById('face-status');
+        const cameraSelect = document.getElementById('camera-select');
 
-        // Pre-fill roll number if provided
-        if (prefillRollNo) {
-            document.getElementById('roll-number').value = prefillRollNo;
+        // Pre-fill
+        if (prefillRollNo) document.getElementById('roll-number').value = prefillRollNo;
+
+        // ---- Enumerate cameras (works on Android, Windows, iOS) ----
+        async function listCameras() {
+            try {
+                // Need a temporary stream to trigger permission on Android/iOS
+                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                tempStream.getTracks().forEach(t => t.stop());
+
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const cameras = devices.filter(d => d.kind === 'videoinput');
+                cameraSelect.innerHTML = cameras.map((c, i) =>
+                    `<option value="${c.deviceId}">${c.label || 'Camera ' + (i + 1)}</option>`
+                ).join('');
+
+                // Prefer front-facing camera
+                const frontCam = cameras.find(c => c.label.toLowerCase().includes('front') || c.label.toLowerCase().includes('user'));
+                if (frontCam) cameraSelect.value = frontCam.deviceId;
+            } catch (e) {
+                cameraSelect.innerHTML = '<option value="">Default Camera</option>';
+            }
         }
+        listCameras();
 
-        // Start camera
+        // ---- Start camera ----
         startBtn.addEventListener('click', async () => {
             try {
-                videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: 640, height: 480 }
-                });
+                if (videoStream) {
+                    videoStream.getTracks().forEach(t => t.stop());
+                }
+
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user',
+                    }
+                };
+                // Use selected camera if available
+                const selectedId = cameraSelect.value;
+                if (selectedId) {
+                    constraints.video = { deviceId: { exact: selectedId }, width: { ideal: 640 }, height: { ideal: 480 } };
+                }
+
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = videoStream;
                 overlay.style.display = 'none';
                 captureBtn.disabled = false;
-                startBtn.innerHTML = '<i class="fa-solid fa-refresh"></i> Restart Camera';
+                startBtn.innerHTML = '<i class="fa-solid fa-refresh"></i> Switch';
+
+                // Start face detection check
+                startFaceCheck();
+                updatePoseUI();
             } catch (err) {
-                showMessage('Camera access denied. Please allow camera access.', 'error');
+                showMessage('Camera access denied. Please allow camera permission in your browser settings.', 'error');
+                console.error('Camera error:', err);
             }
         });
 
-        // Capture photo
-        captureBtn.addEventListener('click', () => {
-            if (photos.length >= 5) return;
+        // ---- Simple face detection using canvas brightness check ----
+        // (Server-side InsightFace does the real validation on submission)
+        function startFaceCheck() {
+            if (faceCheckInterval) clearInterval(faceCheckInterval);
+            faceCheckInterval = setInterval(() => {
+                if (!videoStream || video.readyState < 2) return;
 
+                // Sample center region of video
+                const w = video.videoWidth;
+                const h = video.videoHeight;
+                if (!w || !h) return;
+
+                canvas.width = 160;
+                canvas.height = 120;
+                const ctx = canvas.getContext('2d');
+                // Crop center face area
+                const sx = w * 0.25, sy = h * 0.1, sw = w * 0.5, sh = h * 0.7;
+                ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 160, 120);
+                const data = ctx.getImageData(0, 0, 160, 120).data;
+
+                // Check if there's skin-tone-like content in center (heuristic)
+                let skinPixels = 0;
+                const total = 160 * 120;
+                for (let i = 0; i < data.length; i += 16) { // Sample every 4th pixel
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+                    // Simple skin detection in RGB
+                    if (r > 80 && g > 40 && b > 20 && r > g && r > b && Math.abs(r - g) > 15 && r - b > 15) {
+                        skinPixels++;
+                    }
+                }
+                const skinRatio = skinPixels / (total / 4);
+
+                faceDetected = skinRatio > 0.08; // At least 8% skin-tone pixels in face area
+                updateFaceStatus();
+            }, 500);
+        }
+
+        function updateFaceStatus() {
+            if (faceDetected) {
+                faceStatus.className = 'face-status detected';
+                faceStatus.innerHTML = '<i class="fa-solid fa-face-smile"></i> <span>Face detected — ready to capture</span>';
+                faceGuide.className = 'face-guide detected';
+            } else {
+                faceStatus.className = 'face-status error';
+                faceStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>No face detected — move closer to camera</span>';
+                faceGuide.className = 'face-guide bad';
+            }
+        }
+
+        // ---- Pose UI ----
+        function updatePoseUI() {
+            // Find next uncaptured pose
+            while (currentPose < 5 && photos[currentPose] !== null) currentPose++;
+            if (currentPose >= 5) currentPose = photos.indexOf(null);
+            if (currentPose === -1) currentPose = 0;
+
+            const pose = POSES[currentPose];
+            document.getElementById('pose-icon').textContent = pose.icon;
+            document.getElementById('pose-text').textContent = pose.text;
+            document.getElementById('pose-hint').textContent = pose.hint;
+            document.getElementById('pose-name-btn').textContent = pose.name;
+
+            // Highlight active slot
+            document.querySelectorAll('.photo-slot').forEach((slot, i) => {
+                slot.classList.toggle('active', i === currentPose && !photos[i]);
+            });
+        }
+
+        // ---- Capture ----
+        captureBtn.addEventListener('click', () => {
+            if (!faceDetected) {
+                showMessage('No face detected — position your face inside the oval guide', 'error');
+                return;
+            }
+            if (photos[currentPose] !== null) return; // Already captured
+
+            // Capture full-res frame
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1); // Mirror to match preview
             ctx.drawImage(video, 0, 0);
+            ctx.restore();
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            photos.push(dataUrl);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            photos[currentPose] = dataUrl;
 
             updatePhotoGrid();
+            updatePoseUI();
+
+            // Flash feedback
+            captureBtn.innerHTML = '<i class="fa-solid fa-check"></i> Captured!';
+            captureBtn.style.background = '#16a34a';
+            setTimeout(() => {
+                const nextPose = photos.indexOf(null);
+                if (nextPose !== -1) {
+                    captureBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Capture — <span id="pose-name-btn">${POSES[nextPose]?.name || ''}</span>`;
+                }
+                captureBtn.style.background = '';
+            }, 800);
         });
 
+        // ---- Photo grid ----
         function updatePhotoGrid() {
-            const slots = photoGrid.querySelectorAll('.photo-slot');
-
+            const slots = document.querySelectorAll('.photo-slot');
+            let captured = 0;
             slots.forEach((slot, i) => {
                 if (photos[i]) {
                     slot.innerHTML = `
-                        <img src="${photos[i]}" alt="Photo ${i + 1}">
-                        <button class="remove-btn" onclick="removePhoto(${i})">&times;</button>
-                    `;
+                    <img src="${photos[i]}" alt="${POSES[i].name}">
+                    <button class="remove-btn" onclick="removePhoto(${i})">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>`;
                     slot.classList.add('filled');
+                    captured++;
                 } else {
-                    slot.innerHTML = `<span class="number">${i + 1}</span>`;
+                    slot.innerHTML = `
+                    <i class="${i === 0 ? 'fa-solid fa-face-smile' : i === 1 ? 'fa-solid fa-arrow-left' : i === 2 ? 'fa-solid fa-arrow-right' : i === 3 ? 'fa-solid fa-arrow-up' : 'fa-solid fa-face-meh'} pose-icon-small"></i>
+                    <span class="pose-label">${POSES[i].name.split(' ')[0]}</span>
+                    <button class="remove-btn" onclick="removePhoto(${i})">&times;</button>
+                    <i class="fa-solid fa-circle-check check-badge"></i>`;
                     slot.classList.remove('filled');
                 }
             });
-
-            const percent = (photos.length / 5) * 100;
-            progressFill.style.width = percent + '%';
-            photoCount.textContent = `${photos.length} of 5 photos captured`;
-
-            submitBtn.disabled = photos.length < 5 || !document.getElementById('student-name').value;
+            progressFill.style.width = (captured / 5 * 100) + '%';
+            photoCount.textContent = `${captured} of 5 poses captured`;
+            submitBtn.disabled = captured < 5 || !document.getElementById('student-name').value.trim();
         }
 
         window.removePhoto = function (index) {
-            photos.splice(index, 1);
+            photos[index] = null;
+            currentPose = index;
             updatePhotoGrid();
+            updatePoseUI();
         };
 
-        // Enable submit when name is filled
-        document.getElementById('student-name').addEventListener('input', () => {
-            submitBtn.disabled = photos.length < 5 || !document.getElementById('student-name').value;
+        // Click slot to retake
+        document.querySelectorAll('.photo-slot').forEach((slot, i) => {
+            slot.addEventListener('click', () => {
+                if (photos[i]) return; // Already filled
+                currentPose = i;
+                updatePoseUI();
+            });
         });
 
-        // Submit enrollment
-        submitBtn.addEventListener('click', async () => {
-            const name = document.getElementById('student-name').value;
-            const rollNo = document.getElementById('roll-number').value;
-            const studentClass = document.getElementById('student-class').value;
-            const contact = document.getElementById('contact').value;
+        // Name input enables submit
+        document.getElementById('student-name').addEventListener('input', () => {
+            const captured = photos.filter(p => p !== null).length;
+            submitBtn.disabled = captured < 5 || !document.getElementById('student-name').value.trim();
+        });
 
-            if (!name || photos.length < 5) {
-                showMessage('Please fill name and capture 5 photos', 'error');
-                return;
-            }
+        // ---- Submit enrollment ----
+        submitBtn.addEventListener('click', async () => {
+            const name = document.getElementById('student-name').value.trim();
+            const rollNo = document.getElementById('roll-number').value.trim();
+            const studentClass = document.getElementById('student-class').value.trim();
+            const contact = document.getElementById('contact').value.trim();
+
+            if (!name) { showMessage('Please enter your name', 'error'); return; }
+            const captured = photos.filter(p => p !== null);
+            if (captured.length < 5) { showMessage('Please capture all 5 pose photos', 'error'); return; }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validating faces & submitting...';
 
             try {
                 const response = await fetch(`${API_BASE}/api/enrollment/submit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        token: token,
-                        name: name,
+                        token,
+                        name,
                         roll_no: rollNo,
                         class: studentClass,
                         contact_no: contact,
-                        photos: photos
+                        photos: photos.map((p, i) => ({ data: p, pose: POSES[i].name })),
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Stop camera
-                    if (videoStream) {
-                        videoStream.getTracks().forEach(track => track.stop());
-                    }
+                    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+                    if (faceCheckInterval) clearInterval(faceCheckInterval);
 
-                    // Show success
                     document.getElementById('info-section').style.display = 'none';
                     document.getElementById('camera-section').style.display = 'none';
                     submitBtn.style.display = 'none';
                     document.getElementById('success-section').style.display = 'block';
+
+                    if (data.face_validated) {
+                        showMessage('Face data validated successfully! Your enrollment is pending approval.', 'success');
+                    }
                 } else {
                     showMessage(data.error || 'Submission failed', 'error');
                     submitBtn.disabled = false;
@@ -522,10 +915,10 @@
         });
 
         function showMessage(text, type) {
-            message.textContent = text;
-            message.className = 'message ' + type;
-            message.style.display = 'block';
-            setTimeout(() => { message.style.display = 'none'; }, 5000);
+            msgEl.textContent = text;
+            msgEl.className = 'message ' + type;
+            msgEl.style.display = 'block';
+            if (type !== 'success') setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
         }
     </script>
 </body>

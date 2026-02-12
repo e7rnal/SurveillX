@@ -208,6 +208,82 @@ class FaceService:
             logger.error(f"Face encoding error: {e}")
             return None
 
+    def validate_face(self, frame):
+        """
+        Check if an image contains a detectable face.
+
+        Args:
+            frame: BGR image (numpy array)
+
+        Returns:
+            dict with keys:
+                valid: bool - whether a face was detected
+                num_faces: int - number of faces found
+                error: str or None
+        """
+        if not INSIGHTFACE_AVAILABLE or self.app is None:
+            return {'valid': False, 'num_faces': 0, 'error': 'InsightFace not available'}
+
+        try:
+            faces = self.app.get(frame)
+            if not faces:
+                return {'valid': False, 'num_faces': 0, 'error': 'No face detected'}
+            if len(faces) > 1:
+                return {'valid': False, 'num_faces': len(faces), 'error': 'Multiple faces detected — only one person should be in frame'}
+            return {'valid': True, 'num_faces': 1, 'error': None}
+        except Exception as e:
+            return {'valid': False, 'num_faces': 0, 'error': str(e)}
+
+    def encode_multiple(self, frames):
+        """
+        Generate a robust face embedding by averaging embeddings from multiple images.
+        Used during enrollment to create a stronger representation from 5 pose photos.
+
+        Args:
+            frames: list of BGR images (numpy arrays), each containing one face
+
+        Returns:
+            dict with keys:
+                embedding: list of 512 floats (averaged, normalized) or None
+                valid_count: int - how many frames had a usable face
+                errors: list of str - per-frame errors
+        """
+        if not INSIGHTFACE_AVAILABLE or self.app is None:
+            return {'embedding': None, 'valid_count': 0, 'errors': ['InsightFace not available']}
+
+        embeddings = []
+        errors = []
+
+        for i, frame in enumerate(frames):
+            try:
+                faces = self.app.get(frame)
+                if not faces:
+                    errors.append(f"Photo {i+1}: No face detected")
+                    continue
+
+                largest = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+                embeddings.append(largest.normed_embedding)
+            except Exception as e:
+                errors.append(f"Photo {i+1}: {str(e)}")
+
+        if len(embeddings) < 3:
+            return {
+                'embedding': None,
+                'valid_count': len(embeddings),
+                'errors': errors + [f"Need at least 3 valid face photos, got {len(embeddings)}"]
+            }
+
+        # Average all embeddings and re-normalize
+        avg = np.mean(embeddings, axis=0).astype(np.float32)
+        avg /= np.linalg.norm(avg)  # L2 normalize
+
+        logger.info(f"Encoded face from {len(embeddings)}/{len(frames)} photos")
+        return {
+            'embedding': avg.tolist(),
+            'valid_count': len(embeddings),
+            'errors': errors
+        }
+
     def add_known_face(self, student_id, name, embedding):
         """Add a face embedding to the in-memory cache."""
         if isinstance(embedding, list):

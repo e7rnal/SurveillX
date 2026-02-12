@@ -1,0 +1,22 @@
+[Unit]
+Description=SurveillX ML Processing Worker
+After=network.target surveillx.service surveillx-ws.service
+Wants=surveillx.service surveillx-ws.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/surveillx-backend
+Environment="PATH=/home/ubuntu/surveillx-backend/venv/bin:/usr/local/bin:/usr/bin"
+Environment="ORT_DISABLE_DRM=1"
+ExecStart=/home/ubuntu/surveillx-backend/venv/bin/python3 -m services.ml_worker
+Restart=always
+RestartSec=10
+# Give ML worker longer startup time for model loading
+TimeoutStartSec=120
+StandardOutput=append:/home/ubuntu/surveillx-backend/logs/ml_worker.log
+StandardError=append:/home/ubuntu/surveillx-backend/logs/ml_worker.log
+
+[Install]
+WantedBy=multi-user.target
