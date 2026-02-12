@@ -482,10 +482,12 @@ class SurveillXApp {
                         </div>
                         <div class="status-item">
                             <span>Auto-Switch</span>
-                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-                                <input type="checkbox" id="auto-switch-toggle" style="cursor:pointer;">
-                                <span id="auto-switch-label" style="font-size:0.75rem;color:var(--text-secondary);">Off</span>
-                            </label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div id="auto-switch-toggle" style="width:40px;height:22px;background:var(--bg-tertiary);border-radius:11px;cursor:pointer;position:relative;transition:background 0.3s;border:1px solid var(--border);" data-on="false">
+                                    <div style="width:16px;height:16px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform 0.3s;"></div>
+                                </div>
+                                <span id="auto-switch-label" style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">Off</span>
+                            </div>
                         </div>
                         <div class="status-item">
                             <span>Resolution</span>
@@ -1344,7 +1346,7 @@ class SurveillXApp {
             const modeSelect = document.getElementById('stream-mode-select');
             if (modeSelect) modeSelect.value = this.currentMode;
             const autoToggle = document.getElementById('auto-switch-toggle');
-            if (autoToggle) autoToggle.checked = this.autoSwitch;
+            if (autoToggle) this.updateToggleVisual(autoToggle, this.autoSwitch);
             const autoLabel = document.getElementById('auto-switch-label');
             if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
         } catch (e) {
@@ -1367,8 +1369,9 @@ class SurveillXApp {
         // Auto-switch toggle handler
         const autoToggle = document.getElementById('auto-switch-toggle');
         if (autoToggle) {
-            autoToggle.addEventListener('change', async (e) => {
-                this.autoSwitch = e.target.checked;
+            autoToggle.addEventListener('click', async () => {
+                this.autoSwitch = !this.autoSwitch;
+                this.updateToggleVisual(autoToggle, this.autoSwitch);
                 const autoLabel = document.getElementById('auto-switch-label');
                 if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
                 await this.saveStreamConfig();
@@ -1380,6 +1383,20 @@ class SurveillXApp {
                 }
             });
         }
+    }
+
+    updateToggleVisual(toggle, isOn) {
+        const knob = toggle.querySelector('div');
+        if (isOn) {
+            toggle.style.background = 'var(--success, #22c55e)';
+            toggle.style.borderColor = 'var(--success, #22c55e)';
+            if (knob) knob.style.transform = 'translateX(18px)';
+        } else {
+            toggle.style.background = 'var(--bg-tertiary)';
+            toggle.style.borderColor = 'var(--border)';
+            if (knob) knob.style.transform = 'translateX(0)';
+        }
+        toggle.dataset.on = isOn ? 'true' : 'false';
     }
 
     async saveStreamConfig() {
