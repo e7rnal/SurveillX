@@ -63,6 +63,18 @@ python client.py --camera 1
 
 > **Important:** The client mode must match the dashboard mode. If the dashboard is set to "FastRTC", run the client with `--mode fastrtc`.
 
+### Dual-Mode (Both at once)
+
+To feed **both** servers simultaneously (required for auto-switch):
+
+```cmd
+python client_dual.py --server surveillx.duckdns.org --camera 0
+```
+
+Or double-click **`start_dual.bat`**.
+
+This captures the camera once and sends frames to both port 8443 and 8080. The dashboard can then switch between modes instantly since both are receiving frames.
+
 ---
 
 ## Tuning Video Quality

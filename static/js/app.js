@@ -529,6 +529,9 @@ class SurveillXApp {
         // Reconnect socket to start receiving frames
         this.lastFrameTime = Date.now();
         this.frameCount = 0;
+
+        // Sync mode selector and auto-switch toggle to current state
+        this.syncStreamUI();
     }
 
     toggleFullscreen() {
@@ -1342,47 +1345,49 @@ class SurveillXApp {
             const config = await resp.json();
             this.currentMode = config.current_mode || 'jpegws';
             this.autoSwitch = config.auto_switch || false;
-
-            const modeSelect = document.getElementById('stream-mode-select');
-            if (modeSelect) modeSelect.value = this.currentMode;
-            const autoToggle = document.getElementById('auto-switch-toggle');
-            if (autoToggle) this.updateToggleVisual(autoToggle, this.autoSwitch);
-            const autoLabel = document.getElementById('auto-switch-label');
-            if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
         } catch (e) {
             console.warn('Could not load stream config:', e);
         }
 
-        // Mode selector change handler
-        const modeSelect = document.getElementById('stream-mode-select');
-        if (modeSelect) {
-            modeSelect.addEventListener('change', async (e) => {
+        // Use document-level event delegation — works even after DOM re-renders
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'stream-mode-select') {
                 const newMode = e.target.value;
                 if (newMode !== this.currentMode) {
                     this.currentMode = newMode;
-                    await this.saveStreamConfig();
+                    this.saveStreamConfig();
                     this.switchStream(newMode);
                 }
-            });
-        }
+            }
+        });
 
-        // Auto-switch toggle handler
-        const autoToggle = document.getElementById('auto-switch-toggle');
-        if (autoToggle) {
-            autoToggle.addEventListener('click', async () => {
+        document.addEventListener('click', (e) => {
+            // Check if click was on the toggle or its child (the knob)
+            const toggle = e.target.closest('#auto-switch-toggle');
+            if (toggle) {
                 this.autoSwitch = !this.autoSwitch;
-                this.updateToggleVisual(autoToggle, this.autoSwitch);
+                this.updateToggleVisual(toggle, this.autoSwitch);
                 const autoLabel = document.getElementById('auto-switch-label');
                 if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
-                await this.saveStreamConfig();
+                this.saveStreamConfig();
 
                 if (this.autoSwitch) {
                     this.startAutoSwitch();
                 } else {
                     this.stopAutoSwitch();
                 }
-            });
-        }
+            }
+        });
+    }
+
+    // Called after loadLiveMonitor renders the DOM — sync UI state
+    syncStreamUI() {
+        const modeSelect = document.getElementById('stream-mode-select');
+        if (modeSelect) modeSelect.value = this.currentMode;
+        const autoToggle = document.getElementById('auto-switch-toggle');
+        if (autoToggle) this.updateToggleVisual(autoToggle, this.autoSwitch);
+        const autoLabel = document.getElementById('auto-switch-label');
+        if (autoLabel) autoLabel.textContent = this.autoSwitch ? 'On' : 'Off';
     }
 
     updateToggleVisual(toggle, isOn) {
