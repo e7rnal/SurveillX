@@ -93,5 +93,5 @@ if [ -f /home/ubuntu/surveillx-backend/.env ]; then
 fi
 
 echo "$(date): Startup script completed successfully" >> $LOG_FILE
-echo "$(date): DuckDNS hostname: surveillx.duckdns.org" >> $LOG_FILE
+echo "$(date): DuckDNS hostname: surveillx.servebeer.com" >> $LOG_FILE
 echo "$(date): TURN server: $PUBLIC_IP:3478" >> $LOG_FILE

@@ -7,7 +7,7 @@ Captures webcam once and sends JPEG frames to both:
 This enables auto-switch on the dashboard by feeding both servers.
 
 Usage:
-    python client_dual.py --server surveillx.duckdns.org --camera 0
+    python client_dual.py --server surveillx.servebeer.com --camera 0
 
 Requires:
     pip install opencv-python websockets
@@ -167,7 +167,7 @@ async def stream_dual(server_host: str, camera_index: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SurveillX Dual-Mode Client")
-    parser.add_argument("--server", default="surveillx.duckdns.org")
+    parser.add_argument("--server", default="surveillx.servebeer.com")
     parser.add_argument("--camera", type=int, default=0)
     args = parser.parse_args()
 

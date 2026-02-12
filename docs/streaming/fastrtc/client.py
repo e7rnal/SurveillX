@@ -3,7 +3,7 @@ SurveillX Windows Client — WebRTC Streamer (for FastRTC server)
 Sends webcam video via WebRTC to the FastRTC server on port 8080.
 
 Usage:
-    python client.py --server http://surveillx.duckdns.org:8080 --camera 0
+    python client.py --server http://surveillx.servebeer.com:8080 --camera 0
 
 Requires:
     pip install aiortc opencv-python requests av
@@ -109,7 +109,7 @@ async def run(server_url: str, camera_index: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SurveillX WebRTC Client")
-    parser.add_argument("--server", default="http://surveillx.duckdns.org:8080")
+    parser.add_argument("--server", default="http://surveillx.servebeer.com:8080")
     parser.add_argument("--camera", type=int, default=0)
     args = parser.parse_args()
 

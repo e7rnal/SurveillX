@@ -4,7 +4,7 @@
 set -e
 
 PROJ_DIR="/home/ubuntu/surveillx-backend"
-DOMAIN="surveillx.duckdns.org"
+DOMAIN="surveillx.servebeer.com"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'

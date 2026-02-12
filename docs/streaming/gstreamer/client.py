@@ -4,8 +4,8 @@ Sends webcam frames as JPEG over WebSocket.
 Supports both JPEG-WS (port 8443) and FastRTC (port 8080) modes.
 
 Usage:
-    python client.py --server surveillx.duckdns.org --camera 0 --mode jpegws
-    python client.py --server surveillx.duckdns.org --camera 0 --mode fastrtc
+    python client.py --server surveillx.servebeer.com --camera 0 --mode jpegws
+    python client.py --server surveillx.servebeer.com --camera 0 --mode fastrtc
 
 Requires:
     pip install opencv-python websockets
@@ -129,7 +129,7 @@ async def stream(server_host: str, camera_index: int, mode: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SurveillX Streaming Client")
-    parser.add_argument("--server", default="surveillx.duckdns.org",
+    parser.add_argument("--server", default="surveillx.servebeer.com",
                        help="Server hostname (without ws:// or port)")
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--mode", choices=["jpegws", "fastrtc"], default="jpegws",
