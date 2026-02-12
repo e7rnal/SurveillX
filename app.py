@@ -5,7 +5,7 @@ Smart Surveillance System with Face Recognition and Behavior Detection
 
 import os
 import logging
-from flask import Flask, jsonify, redirect, send_from_directory
+from flask import Flask, jsonify, redirect, send_from_directory, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
@@ -107,6 +107,28 @@ def health():
             "status": "unhealthy",
             "error": str(e)
         }), 500
+
+# Internal endpoint: receive frames from GStreamer server and broadcast to browser
+@app.route('/api/stream/frame', methods=['POST'])
+def receive_frame():
+    """Receive a frame from the GStreamer server and broadcast to browser clients."""
+    try:
+        data = request.get_json(silent=True)
+        if not data or 'frame' not in data:
+            return jsonify({"error": "No frame data"}), 400
+
+        # Broadcast to all /stream Socket.IO clients (the browser)
+        socketio.emit('frame', {
+            'frame': data['frame'],
+            'camera_id': data.get('camera_id', 1),
+            'timestamp': data.get('timestamp', '')
+        }, namespace='/stream')
+
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        logger.error(f"Frame receive error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 # Error handlers
 @app.errorhandler(404)

@@ -20,7 +20,7 @@ import threading
 import cv2
 import numpy as np
 import websockets
-import socketio
+import requests as req_lib
 
 import gi
 gi.require_version("Gst", "1.0")
@@ -42,31 +42,27 @@ logger = logging.getLogger("gst-streaming")
 # ---------- Config ----------
 SIGNALING_PORT = 8443
 FLASK_URL = "http://localhost:5000"
+FLASK_FRAME_ENDPOINT = f"{FLASK_URL}/api/stream/frame"
 STUN_SERVER = "stun://stun.l.google.com:19302"
 TURN_URL = "turn://surveillx:Vishu%409637@13.205.156.238:3478"
 
-# ---------- Socket.IO Client (forwards frames to Flask for browser display) ----------
-sio = socketio.Client(logger=False, reconnection=True)
-sio_connected = False
+# ---------- HTTP Session (for frame forwarding to Flask) ----------
+http_session = req_lib.Session()
+http_session.headers.update({"Content-Type": "application/json"})
+flask_connected = False
 
 
-def connect_to_flask():
-    """Connect to Flask's Socket.IO server for frame forwarding."""
-    global sio_connected
+def check_flask_connection():
+    """Verify Flask is reachable."""
+    global flask_connected
     try:
-        sio.connect(FLASK_URL, namespaces=["/stream"], wait_timeout=5)
-        sio_connected = True
-        logger.info(f"Connected to Flask Socket.IO at {FLASK_URL}")
+        r = http_session.get(f"{FLASK_URL}/health", timeout=3)
+        flask_connected = r.status_code == 200
+        if flask_connected:
+            logger.info(f"Flask is reachable at {FLASK_URL}")
     except Exception as e:
-        logger.warning(f"Flask connection failed: {e}. Will retry on first frame.")
-        sio_connected = False
-
-
-@sio.on("disconnect", namespace="/stream")
-def on_sio_disconnect():
-    global sio_connected
-    sio_connected = False
-    logger.warning("Disconnected from Flask Socket.IO")
+        logger.warning(f"Flask not reachable: {e}")
+        flask_connected = False
 
 
 # ---------- Global State ----------
@@ -80,29 +76,26 @@ glib_loop = None
 
 # ---------- Frame Processing ----------
 def forward_to_browser(frame):
-    """Encode frame as JPEG and emit to Flask via Socket.IO."""
-    global sio_connected
-    if not sio_connected:
-        # Try reconnecting
-        try:
-            if not sio.connected:
-                connect_to_flask()
-        except Exception:
-            return
-        if not sio_connected:
-            return
+    """Encode frame as JPEG and POST to Flask for Socket.IO broadcast."""
+    global flask_connected
 
     try:
         _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
         frame_b64 = base64.b64encode(buffer).decode("utf-8")
-        sio.emit(
-            "frame",
-            {"frame": frame_b64, "camera_id": 1, "timestamp": str(time.time())},
-            namespace="/stream",
+        r = http_session.post(
+            FLASK_FRAME_ENDPOINT,
+            json={"frame": frame_b64, "camera_id": 1, "timestamp": str(time.time())},
+            timeout=2,
         )
+        if r.status_code != 200 and frame_count % 100 == 0:
+            logger.warning(f"Frame POST failed: {r.status_code}")
+        elif not flask_connected:
+            flask_connected = True
+            logger.info("Frame forwarding to Flask working!")
     except Exception as e:
-        logger.error(f"Frame forward error: {e}")
-        sio_connected = False
+        if frame_count % 100 == 0:
+            logger.error(f"Frame forward error: {e}")
+        flask_connected = False
 
 
 def process_for_attendance(frame):
@@ -376,7 +369,7 @@ async def stats_handler(websocket, path=None):
     stats = json.dumps({
         "streamer_connected": current_ws is not None,
         "frames_processed": frame_count,
-        "flask_connected": sio_connected,
+        "flask_connected": flask_connected,
         "pipeline_state": str(pipeline.get_state(0)[1]) if pipeline else "NULL",
     })
     await websocket.send(stats)
@@ -395,8 +388,8 @@ async def main():
     glib_thread = threading.Thread(target=run_glib_loop, daemon=True)
     glib_thread.start()
 
-    # Connect to Flask for frame forwarding
-    connect_to_flask()
+    # Verify Flask is reachable for frame forwarding
+    check_flask_connection()
 
     # Save reference to asyncio loop (for ICE candidate forwarding)
     main_loop = asyncio.get_event_loop()
