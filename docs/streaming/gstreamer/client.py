@@ -1,138 +1,125 @@
 """
-SurveillX Windows Client — WebRTC via aiortc (for GStreamer server)
-Sends webcam video via WebRTC to the GStreamer server.
-Uses WebSocket signaling (not HTTP POST).
+SurveillX Windows Client — Direct JPEG over WebSocket
+Sends webcam frames as JPEG over WebSocket to the server.
+Simple, reliable, full quality control — no WebRTC codec issues.
 
 Usage:
     python client.py --server ws://surveillx.duckdns.org:8443 --camera 0
 
 Requires:
-    pip install aiortc opencv-python websockets av
+    pip install opencv-python websockets
 """
 import argparse
 import asyncio
+import base64
 import json
 import logging
+import time
 
 import cv2
 import websockets
-from aiortc import (
-    RTCPeerConnection,
-    RTCSessionDescription,
-    RTCConfiguration,
-    RTCIceServer,
-    VideoStreamTrack,
-)
-from av import VideoFrame
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("surveillx-client")
 
-# ICE config — includes TURN for NAT traversal
-ICE_CONFIG = RTCConfiguration(
-    iceServers=[
-        RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
-        RTCIceServer(
-            urls=["turn:13.205.156.238:3478", "turn:13.205.156.238:3478?transport=tcp"],
-            username="surveillx",
-            credential="Vishu@9637",
-        ),
-    ]
-)
+# Streaming settings
+JPEG_QUALITY = 85       # 1-100, higher = better quality, larger frames
+TARGET_FPS = 15         # Target frames per second
+FRAME_WIDTH = 1280      # Capture width
+FRAME_HEIGHT = 720      # Capture height
 
 
-class CameraTrack(VideoStreamTrack):
-    """Capture webcam frames and emit as WebRTC video."""
+async def stream(server_url: str, camera_index: int):
+    """Capture webcam frames and send as JPEG over WebSocket."""
 
-    def __init__(self, camera_index=0, width=640, height=480):
-        super().__init__()
-        self.cap = cv2.VideoCapture(camera_index)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        if not self.cap.isOpened():
-            raise RuntimeError(f"Cannot open camera {camera_index}")
-        logger.info(f"Camera {camera_index} opened: {width}x{height}")
+    # Open camera
+    cap = cv2.VideoCapture(camera_index)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
-    async def recv(self):
-        pts, time_base = await self.next_timestamp()
-        ret, frame = self.cap.read()
-        if not ret:
-            return VideoFrame(width=640, height=480)
-        vf = VideoFrame.from_ndarray(frame, format="bgr24")
-        vf.pts = pts
-        vf.time_base = time_base
-        return vf
+    if not cap.isOpened():
+        logger.error(f"Cannot open camera {camera_index}")
+        return
 
-    def stop(self):
-        if self.cap.isOpened():
-            self.cap.release()
+    actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    logger.info(f"Camera {camera_index} opened: {actual_w}x{actual_h}")
 
+    frame_interval = 1.0 / TARGET_FPS
+    frame_count = 0
+    retry_count = 0
+    max_retries = 10
 
-async def run(server_url: str, camera_index: int):
-    pc = RTCPeerConnection(configuration=ICE_CONFIG)
-    track = CameraTrack(camera_index)
-    pc.addTrack(track)
-    connected = False
-
-    @pc.on("connectionstatechange")
-    async def on_state():
-        nonlocal connected
-        logger.info(f"Connection: {pc.connectionState}")
-        if pc.connectionState == "connected":
-            connected = True
-        if pc.connectionState == "failed":
-            await pc.close()
-
-    logger.info(f"Connecting to {server_url}...")
-    async with websockets.connect(server_url) as ws:
-        # Create and send offer (ICE candidates are embedded in the SDP)
-        offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-
-        await ws.send(json.dumps({
-            "type": "offer",
-            "sdp": pc.localDescription.sdp,
-        }))
-        logger.info("SDP offer sent")
-
-        # Receive messages from server
-        async for msg in ws:
-            data = json.loads(msg)
-
-            if data["type"] == "answer":
-                logger.info("Received SDP answer")
-                answer = RTCSessionDescription(sdp=data["sdp"], type="answer")
-                await pc.setRemoteDescription(answer)
-                logger.info("Remote description set. Waiting for ICE to connect...")
-
-            elif data["type"] == "ice":
-                # Server sends trickle ICE candidates — log but skip
-                # aiortc does not support adding raw candidate strings from GStreamer
-                logger.debug("Server ICE candidate received (ignored, using SDP candidates)")
-
-            # Once connected, break out of signaling loop and keep streaming
-            if connected:
-                logger.info("Connected! Streaming... Press Ctrl+C to stop.")
-                break
-
-        # Keep alive while connected
+    while retry_count < max_retries:
         try:
-            while pc.connectionState in ["connected", "connecting", "new"]:
-                await asyncio.sleep(1)
-        except asyncio.CancelledError:
-            pass
+            logger.info(f"Connecting to {server_url}...")
+            async with websockets.connect(server_url, ping_interval=20, ping_timeout=10) as ws:
+                # Send hello message to identify as JPEG client
+                await ws.send(json.dumps({
+                    "type": "hello",
+                    "mode": "jpeg",
+                    "width": actual_w,
+                    "height": actual_h,
+                    "fps": TARGET_FPS,
+                }))
+                logger.info(f"Connected! Streaming at {TARGET_FPS}fps, JPEG quality={JPEG_QUALITY}")
+                retry_count = 0  # Reset on successful connection
 
-    track.stop()
-    await pc.close()
+                while True:
+                    t_start = time.time()
+
+                    ret, frame = cap.read()
+                    if not ret:
+                        logger.warning("Failed to read frame, retrying...")
+                        await asyncio.sleep(0.1)
+                        continue
+
+                    # Encode as JPEG
+                    _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
+                    frame_b64 = base64.b64encode(buffer).decode('utf-8')
+
+                    # Send frame
+                    await ws.send(json.dumps({
+                        "type": "frame",
+                        "frame": frame_b64,
+                        "camera_id": 1,
+                        "timestamp": str(time.time()),
+                        "width": actual_w,
+                        "height": actual_h,
+                    }))
+
+                    frame_count += 1
+                    if frame_count == 1:
+                        logger.info(f"First frame sent! Size: {len(buffer)} bytes")
+                    if frame_count % 100 == 0:
+                        logger.info(f"Sent {frame_count} frames")
+
+                    # Throttle to target FPS
+                    elapsed = time.time() - t_start
+                    sleep_time = max(0, frame_interval - elapsed)
+                    if sleep_time > 0:
+                        await asyncio.sleep(sleep_time)
+
+        except websockets.exceptions.ConnectionClosed as e:
+            retry_count += 1
+            logger.warning(f"Connection closed: {e}. Retry {retry_count}/{max_retries}...")
+            await asyncio.sleep(2)
+        except Exception as e:
+            retry_count += 1
+            logger.error(f"Error: {e}. Retry {retry_count}/{max_retries}...")
+            await asyncio.sleep(2)
+
+    cap.release()
+    logger.info(f"Stopped. Total frames sent: {frame_count}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SurveillX WebRTC Client (GStreamer server)")
+    parser = argparse.ArgumentParser(description="SurveillX WebSocket Streaming Client")
     parser.add_argument("--server", default="ws://surveillx.duckdns.org:8443")
     parser.add_argument("--camera", type=int, default=0)
     args = parser.parse_args()
 
     try:
-        asyncio.run(run(args.server, args.camera))
+        asyncio.run(stream(args.server, args.camera))
     except KeyboardInterrupt:
-        logger.info("Stopped.")
+        logger.info("Stopped by user.")
