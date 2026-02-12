@@ -449,8 +449,9 @@ class SurveillXApp {
                             <i class="fa-solid fa-circle"></i> Disconnected
                         </span>
                     </div>
-                    <div class="feed-container">
+                    <div class="feed-container" style="position:relative;">
                         <canvas id="live-canvas" width="1280" height="720"></canvas>
+                        <canvas id="detection-canvas" width="1280" height="720" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
                         <div class="feed-overlay" id="feed-overlay">
                             <i class="fa-solid fa-video-slash"></i>
                             <div>No video stream</div>
@@ -1651,34 +1652,146 @@ class SurveillXApp {
         }
     }
 
+    // COCO skeleton connections for pose drawing
+    _SKELETON = [
+        [0, 1], [0, 2], [1, 3], [2, 4],         // head
+        [5, 6],                             // shoulders
+        [5, 7], [7, 9], [6, 8], [8, 10],         // arms
+        [5, 11], [6, 12], [11, 12],            // torso
+        [11, 13], [13, 15], [12, 14], [14, 16],  // legs
+    ];
+    _ACTIVITY_COLORS = {
+        normal: '#22c55e', running: '#f59e0b', loitering: '#f59e0b',
+        fighting: '#ef4444', falling: '#ef4444',
+    };
+
     handleDetection(data) {
-        // Update face count
+        const faces = data.faces || [];
+        const activity = data.activity || {};
+        const persons = data.persons || [];
+        const activityType = typeof activity === 'string' ? activity : (activity.type || 'normal');
+
+        // --- Update text indicators ---
         const faceCount = document.getElementById('face-count');
-        if (faceCount && data.faces) {
-            faceCount.textContent = data.faces.length;
-        }
+        if (faceCount) faceCount.textContent = faces.length;
 
-        // Update activity status
         const activityStatus = document.getElementById('activity-status');
-        if (activityStatus && data.activity) {
-            activityStatus.textContent = data.activity;
-            activityStatus.style.color = data.activity !== 'Normal' ? 'var(--warning)' : '';
+        if (activityStatus) {
+            const label = activityType.charAt(0).toUpperCase() + activityType.slice(1);
+            activityStatus.textContent = label;
+            const c = this._ACTIVITY_COLORS[activityType] || '#22c55e';
+            activityStatus.style.color = c;
+            activityStatus.style.fontWeight = activityType !== 'normal' ? '700' : '500';
         }
 
-        // Update live detections list
+        // --- Update sidebar detections list ---
         const liveDetections = document.getElementById('live-detections');
-        if (liveDetections && data.faces && data.faces.length > 0) {
-            liveDetections.innerHTML = data.faces.map(face => `
-                <div class="list-item" style="padding: 0.5rem;">
-                    <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                        ${face.name ? face.name[0] : '?'}
-                    </div>
-                    <div class="item-content">
-                        <div class="item-title" style="font-size: 0.85rem;">${face.name || 'Unknown'}</div>
-                        <div class="item-subtitle">${face.confidence ? (face.confidence * 100).toFixed(0) + '%' : ''}</div>
-                    </div>
-                </div>
-            `).join('');
+        if (liveDetections && faces.length > 0) {
+            liveDetections.innerHTML = faces.map(face => {
+                const name = face.student_name || face.name || 'Unknown';
+                const conf = face.confidence ? (face.confidence * 100).toFixed(0) + '%' : '';
+                const initial = name[0] || '?';
+                const color = face.student_id ? 'var(--success)' : 'var(--text-secondary)';
+                return `
+                    <div class="list-item" style="padding:0.5rem;">
+                        <div class="avatar" style="width:32px;height:32px;font-size:0.8rem;background:${color};">${initial}</div>
+                        <div class="item-content">
+                            <div class="item-title" style="font-size:0.85rem;">${name}</div>
+                            <div class="item-subtitle">${conf}${face.age ? ' · Age ' + face.age : ''}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+        } else if (liveDetections && faces.length === 0) {
+            liveDetections.innerHTML = '<div class="empty-state small"><i class="fa-solid fa-eye-slash"></i><p>No detections</p></div>';
+        }
+
+        // --- Draw overlays on detection canvas ---
+        this._drawDetectionOverlay(faces, persons, activityType, activity);
+    }
+
+    _drawDetectionOverlay(faces, persons, activityType, activity) {
+        const canvas = document.getElementById('detection-canvas');
+        const videoCanvas = document.getElementById('live-canvas');
+        if (!canvas || !videoCanvas) return;
+
+        // Sync size
+        canvas.width = videoCanvas.width;
+        canvas.height = videoCanvas.height;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw face boxes
+        for (const face of faces) {
+            const loc = face.location;
+            if (!loc) continue;
+            const x = loc.left, y = loc.top;
+            const w = loc.right - loc.left, h = loc.bottom - loc.top;
+            const recognized = !!face.student_id;
+            const color = recognized ? '#22c55e' : '#3b82f6';
+
+            // Bounding box
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+
+            // Label background
+            const name = face.student_name || face.name || 'Unknown';
+            const conf = face.confidence ? ` ${(face.confidence * 100).toFixed(0)}%` : '';
+            const label = `${name}${conf}`;
+            ctx.font = 'bold 14px Inter, sans-serif';
+            const tw = ctx.measureText(label).width + 8;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y - 22, tw, 22);
+            ctx.fillStyle = '#fff';
+            ctx.fillText(label, x + 4, y - 6);
+        }
+
+        // Draw pose skeletons
+        for (const person of persons) {
+            const kps = person.keypoints;
+            const confs = person.confidences;
+            if (!kps || kps.length < 17) continue;
+
+            // Draw bones
+            ctx.strokeStyle = 'rgba(0, 200, 255, 0.7)';
+            ctx.lineWidth = 2;
+            for (const [i, j] of this._SKELETON) {
+                if ((confs && confs[i] < 0.3) || (confs && confs[j] < 0.3)) continue;
+                ctx.beginPath();
+                ctx.moveTo(kps[i][0], kps[i][1]);
+                ctx.lineTo(kps[j][0], kps[j][1]);
+                ctx.stroke();
+            }
+
+            // Draw joints
+            for (let k = 0; k < 17; k++) {
+                if (confs && confs[k] < 0.3) continue;
+                ctx.beginPath();
+                ctx.arc(kps[k][0], kps[k][1], 3, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00c8ff';
+                ctx.fill();
+            }
+        }
+
+        // Activity badge (top-right)
+        if (activityType && activityType !== 'normal') {
+            const badgeColor = this._ACTIVITY_COLORS[activityType] || '#f59e0b';
+            const label = activityType.toUpperCase();
+            const desc = activity.description || '';
+            ctx.font = 'bold 16px Inter, sans-serif';
+            const tw = ctx.measureText(label).width + 20;
+            const bx = canvas.width - tw - 10, by = 10;
+            ctx.fillStyle = badgeColor;
+            ctx.globalAlpha = 0.85;
+            ctx.fillRect(bx, by, tw, 30);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#fff';
+            ctx.fillText(label, bx + 10, by + 21);
+            if (desc) {
+                ctx.font = '12px Inter, sans-serif';
+                ctx.fillStyle = badgeColor;
+                ctx.fillText(desc, bx, by + 48);
+            }
         }
     }
 

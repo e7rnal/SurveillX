@@ -1,192 +1,236 @@
 """
-Face Recognition Service
-Handles face detection, encoding, and matching for attendance
+Face Recognition Service — InsightFace (Buffalo_L)
+Handles face detection, 512-dim embedding extraction, and matching for attendance.
+GPU-accelerated on Tesla T4 via ONNX Runtime CUDA provider.
 """
 
 import logging
+import json
 import numpy as np
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# Try to import face_recognition (requires dlib)
+# ---------- InsightFace Setup ----------
+INSIGHTFACE_AVAILABLE = False
 try:
-    import face_recognition
-    FACE_RECOGNITION_AVAILABLE = True
-    logger.info("face_recognition library loaded successfully")
+    import insightface
+    from insightface.app import FaceAnalysis
+    INSIGHTFACE_AVAILABLE = True
+    logger.info("InsightFace library loaded successfully")
 except ImportError:
-    FACE_RECOGNITION_AVAILABLE = False
-    logger.warning("face_recognition library not available - using mock detection")
+    logger.warning("InsightFace not available — install with: pip install insightface onnxruntime-gpu")
 
 
 class FaceService:
-    """Face recognition service for student identification"""
-    
-    def __init__(self, db_manager=None, threshold=0.6):
+    """Face recognition service using InsightFace Buffalo_L model."""
+
+    def __init__(self, db_manager=None, threshold=0.4, gpu_id=0):
+        """
+        Args:
+            db_manager: DBManager instance for student lookups
+            threshold: Cosine similarity threshold for face matching (0.0-1.0, default 0.4)
+            gpu_id: GPU device ID (0 for first GPU)
+        """
         self.db = db_manager
         self.threshold = threshold
-        self.known_encodings = {}  # student_id -> encoding
-        self.known_names = {}  # student_id -> name
-        
-        if FACE_RECOGNITION_AVAILABLE:
+        self.gpu_id = gpu_id
+        self.app = None
+
+        # In-memory cache of known face embeddings
+        self.known_embeddings = {}   # student_id -> np.ndarray (512-d)
+        self.known_names = {}        # student_id -> name
+
+        if INSIGHTFACE_AVAILABLE:
+            self._init_model()
             self.load_known_faces()
-    
+
+    def _init_model(self):
+        """Initialize the InsightFace Buffalo_L model with GPU."""
+        try:
+            self.app = FaceAnalysis(
+                name='buffalo_l',
+                providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+            )
+            # det_size controls the input size for detection (larger = more accurate but slower)
+            self.app.prepare(ctx_id=self.gpu_id, det_size=(640, 640))
+            logger.info(f"InsightFace Buffalo_L loaded on GPU {self.gpu_id}")
+        except Exception as e:
+            logger.error(f"Failed to init InsightFace: {e}")
+            self.app = None
+
     def load_known_faces(self):
-        """Load face encodings from database"""
+        """Load face embeddings from database into memory cache."""
         if not self.db:
-            logger.warning("No database manager - cannot load known faces")
+            logger.warning("No database manager — cannot load known faces")
             return
-        
+
         try:
             students = self.db.get_all_students()
             loaded = 0
-            
+
             for student in students:
-                if student.get('face_encoding'):
+                encoding_data = student.get('face_encoding')
+                if encoding_data:
                     try:
-                        # Decode stored encoding
-                        encoding = np.frombuffer(
-                            bytes.fromhex(student['face_encoding']),
-                            dtype=np.float64
-                        )
-                        self.known_encodings[student['id']] = encoding
-                        self.known_names[student['id']] = student['name']
-                        loaded += 1
+                        # Stored as JSON list of 512 floats
+                        if isinstance(encoding_data, str):
+                            embedding_list = json.loads(encoding_data)
+                        else:
+                            embedding_list = encoding_data
+
+                        embedding = np.array(embedding_list, dtype=np.float32)
+
+                        if embedding.shape[0] == 512:
+                            self.known_embeddings[student['id']] = embedding
+                            self.known_names[student['id']] = student['name']
+                            loaded += 1
+                        else:
+                            logger.warning(
+                                f"Student {student['id']} has invalid embedding size: {embedding.shape}"
+                            )
                     except Exception as e:
-                        logger.warning(f"Failed to load encoding for student {student['id']}: {e}")
-            
-            logger.info(f"Loaded {loaded} face encodings from database")
-            
+                        logger.warning(f"Failed to load embedding for student {student['id']}: {e}")
+
+            logger.info(f"Loaded {loaded} face embeddings from database")
+
         except Exception as e:
             logger.error(f"Error loading known faces: {e}")
-    
+
     def detect_and_recognize(self, frame):
         """
-        Detect faces in frame and recognize known students
-        
+        Detect faces in frame and recognize known students.
+
         Args:
             frame: BGR image (numpy array from OpenCV)
-        
+
         Returns:
-            List of detected faces with student info if matched
+            List of dicts with keys:
+                location: {top, right, bottom, left}
+                student_id: int or None
+                student_name: str or None
+                confidence: float (cosine similarity)
+                embedding: list (512 floats) — only if no match (for enrollment UI)
         """
-        if not FACE_RECOGNITION_AVAILABLE:
-            return self._mock_detection(frame)
-        
+        if not INSIGHTFACE_AVAILABLE or self.app is None:
+            return []
+
         results = []
-        
+
         try:
-            # Convert BGR to RGB
-            rgb_frame = frame[:, :, ::-1]
-            
-            # Detect faces
-            face_locations = face_recognition.face_locations(rgb_frame, model='hog')
-            
-            if not face_locations:
-                return results
-            
-            # Get face encodings
-            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-            
-            for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
+            # InsightFace expects BGR (OpenCV default) — no conversion needed
+            faces = self.app.get(frame)
+
+            for face in faces:
+                bbox = face.bbox.astype(int)  # [x1, y1, x2, y2]
+                embedding = face.normed_embedding  # 512-d normalized vector
+
                 face_data = {
                     'location': {
-                        'top': top,
-                        'right': right,
-                        'bottom': bottom,
-                        'left': left
+                        'left': int(bbox[0]),
+                        'top': int(bbox[1]),
+                        'right': int(bbox[2]),
+                        'bottom': int(bbox[3]),
                     },
                     'student_id': None,
                     'student_name': None,
-                    'confidence': 0.0
+                    'confidence': 0.0,
+                    'age': int(face.age) if hasattr(face, 'age') else None,
+                    'gender': 'M' if (hasattr(face, 'gender') and face.gender == 1) else 'F' if hasattr(face, 'gender') else None,
                 }
-                
-                # Try to match with known faces
-                if self.known_encodings:
-                    best_match_id = None
-                    best_distance = 1.0
-                    
-                    for student_id, known_encoding in self.known_encodings.items():
-                        distance = face_recognition.face_distance([known_encoding], encoding)[0]
-                        
-                        if distance < best_distance:
-                            best_distance = distance
-                            best_match_id = student_id
-                    
-                    # Check if match is good enough
-                    if best_match_id and best_distance < (1 - self.threshold):
-                        face_data['student_id'] = best_match_id
-                        face_data['student_name'] = self.known_names.get(best_match_id, 'Unknown')
-                        face_data['confidence'] = round(1 - best_distance, 3)
-                
+
+                # Match against known faces using cosine similarity
+                if self.known_embeddings:
+                    best_id = None
+                    best_sim = -1.0
+
+                    for student_id, known_emb in self.known_embeddings.items():
+                        sim = float(np.dot(embedding, known_emb))
+                        if sim > best_sim:
+                            best_sim = sim
+                            best_id = student_id
+
+                    if best_id and best_sim >= self.threshold:
+                        face_data['student_id'] = best_id
+                        face_data['student_name'] = self.known_names.get(best_id, 'Unknown')
+                        face_data['confidence'] = round(best_sim, 3)
+
                 results.append(face_data)
-            
-            logger.debug(f"Detected {len(results)} faces, {sum(1 for f in results if f['student_id'])} recognized")
-            
+
+            if results:
+                recognized = sum(1 for f in results if f['student_id'])
+                logger.debug(f"Detected {len(results)} faces, {recognized} recognized")
+
         except Exception as e:
             logger.error(f"Face detection error: {e}")
-        
+
         return results
-    
-    def _mock_detection(self, frame):
-        """Mock detection when face_recognition not available"""
-        # Return empty for now - no faces detected without library
-        return []
-    
+
     def encode_face(self, frame):
         """
-        Generate face encoding from image
-        
+        Generate face embedding from image.
+
         Args:
-            frame: BGR image with a single face
-        
+            frame: BGR image with a face
+
         Returns:
-            Face encoding as hex string, or None if no face found
+            List of 512 floats (JSON-serializable), or None if no face found
         """
-        if not FACE_RECOGNITION_AVAILABLE:
-            logger.warning("face_recognition not available for encoding")
+        if not INSIGHTFACE_AVAILABLE or self.app is None:
+            logger.warning("InsightFace not available for encoding")
             return None
-        
+
         try:
-            rgb_frame = frame[:, :, ::-1]
-            
-            face_locations = face_recognition.face_locations(rgb_frame)
-            if not face_locations:
+            faces = self.app.get(frame)
+
+            if not faces:
                 return None
-            
-            encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-            if not encodings:
-                return None
-            
-            # Return first face encoding as hex string
-            return encodings[0].tobytes().hex()
-            
+
+            # Use the largest face (most prominent)
+            largest = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+            embedding = largest.normed_embedding
+
+            # Return as list of floats for JSON storage
+            return embedding.tolist()
+
         except Exception as e:
             logger.error(f"Face encoding error: {e}")
             return None
-    
-    def add_known_face(self, student_id, name, encoding):
-        """Add a face encoding to the known faces cache"""
-        if isinstance(encoding, str):
-            # Convert from hex string
-            encoding = np.frombuffer(bytes.fromhex(encoding), dtype=np.float64)
-        
-        self.known_encodings[student_id] = encoding
+
+    def add_known_face(self, student_id, name, embedding):
+        """Add a face embedding to the in-memory cache."""
+        if isinstance(embedding, list):
+            embedding = np.array(embedding, dtype=np.float32)
+        elif isinstance(embedding, str):
+            embedding = np.array(json.loads(embedding), dtype=np.float32)
+
+        self.known_embeddings[student_id] = embedding
         self.known_names[student_id] = name
         logger.info(f"Added known face for student {student_id}: {name}")
-    
+
     def remove_known_face(self, student_id):
-        """Remove a face from known faces cache"""
-        self.known_encodings.pop(student_id, None)
+        """Remove a face from the in-memory cache."""
+        self.known_embeddings.pop(student_id, None)
         self.known_names.pop(student_id, None)
         logger.info(f"Removed known face for student {student_id}")
 
+    def get_stats(self):
+        """Return face service statistics."""
+        return {
+            'available': INSIGHTFACE_AVAILABLE and self.app is not None,
+            'model': 'buffalo_l',
+            'known_faces': len(self.known_embeddings),
+            'threshold': self.threshold,
+            'gpu_id': self.gpu_id,
+        }
 
-# Global face service instance (will be initialized with db_manager)
+
+# ---------- Global Instance ----------
 face_service = None
 
-def init_face_service(db_manager, threshold=0.6):
-    """Initialize face service with database manager"""
+
+def init_face_service(db_manager, threshold=0.4, gpu_id=0):
+    """Initialize global face service."""
     global face_service
-    face_service = FaceService(db_manager, threshold)
+    face_service = FaceService(db_manager, threshold, gpu_id)
     return face_service

@@ -132,6 +132,53 @@ def receive_frame():
         return jsonify({"error": str(e)}), 500
 
 
+# Internal endpoint: receive ML detections and broadcast to browser
+@app.route('/api/stream/detections', methods=['POST'])
+def receive_detections():
+    """Receive detection results from ML worker and broadcast to dashboard."""
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "No data"}), 400
+
+        # Serialize face data (remove numpy arrays)
+        faces = data.get('faces', [])
+        for face in faces:
+            face.pop('embedding', None)  # Don't broadcast raw embeddings
+
+        activity = data.get('activity', {})
+
+        # Broadcast to dashboard
+        socketio.emit('detection', {
+            'faces': faces,
+            'activity': {
+                'type': activity.get('type', 'normal'),
+                'is_abnormal': activity.get('is_abnormal', False),
+                'severity': activity.get('severity', 'low'),
+                'confidence': activity.get('confidence', 0),
+                'description': activity.get('description', ''),
+            },
+            'persons': activity.get('persons', []),
+            'timestamp': data.get('timestamp', ''),
+        }, namespace='/stream')
+
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        logger.error(f"Detection broadcast error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ML worker status
+@app.route('/api/ml/status')
+def ml_status():
+    """Return ML service availability."""
+    return jsonify({
+        "face_service": "available",
+        "activity_detector": "available",
+        "note": "ML processing runs in separate ml_worker.py process",
+    })
+
+
 # ---------- Stream Mode Configuration ----------
 import json as _json
 
