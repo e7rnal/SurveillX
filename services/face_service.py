@@ -12,14 +12,19 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # ---------- InsightFace Setup ----------
+# Suppress onnxruntime DRM warning on headless cloud GPUs
+import os
+os.environ.setdefault('ORT_DISABLE_DRM', '1')
+
 INSIGHTFACE_AVAILABLE = False
 try:
+    import onnxruntime as ort
     import insightface
     from insightface.app import FaceAnalysis
     INSIGHTFACE_AVAILABLE = True
-    logger.info("InsightFace library loaded successfully")
-except ImportError:
-    logger.warning("InsightFace not available — install with: pip install insightface onnxruntime-gpu")
+    logger.info(f"InsightFace {insightface.__version__} loaded, ORT providers: {ort.get_available_providers()}")
+except Exception as e:
+    logger.warning(f"InsightFace not available: {e}")
 
 
 class FaceService:
@@ -46,18 +51,24 @@ class FaceService:
             self.load_known_faces()
 
     def _init_model(self):
-        """Initialize the InsightFace Buffalo_L model with GPU."""
-        try:
-            self.app = FaceAnalysis(
-                name='buffalo_l',
-                providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
-            )
-            # det_size controls the input size for detection (larger = more accurate but slower)
-            self.app.prepare(ctx_id=self.gpu_id, det_size=(640, 640))
-            logger.info(f"InsightFace Buffalo_L loaded on GPU {self.gpu_id}")
-        except Exception as e:
-            logger.error(f"Failed to init InsightFace: {e}")
-            self.app = None
+        """Initialize the InsightFace Buffalo_L model — tries GPU, falls back to CPU."""
+        providers_options = [
+            ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+            ['CPUExecutionProvider'],
+        ]
+        for providers in providers_options:
+            try:
+                self.app = FaceAnalysis(
+                    name='buffalo_l',
+                    providers=providers
+                )
+                self.app.prepare(ctx_id=self.gpu_id, det_size=(640, 640))
+                logger.info(f"InsightFace Buffalo_L loaded with providers: {providers}")
+                return
+            except Exception as e:
+                logger.warning(f"InsightFace init failed with {providers}: {e}")
+                self.app = None
+        logger.error("InsightFace could not be initialized with any provider")
 
     def load_known_faces(self):
         """Load face embeddings from database into memory cache."""
