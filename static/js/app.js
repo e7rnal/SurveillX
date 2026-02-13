@@ -1268,7 +1268,9 @@ class SurveillXApp {
                             <div class="avatar" style="width: 60px; height: 60px; font-size: 1.5rem;">${student.name[0]}</div>
                             <div>
                                 <h4 style="margin: 0;">${student.name}</h4>
-                                <p style="margin: 0; color: var(--text-secondary);">Roll: ${student.roll_no}</p>
+                                <p style="margin: 0; color: var(--text-secondary);">
+                                    Roll: <span class="monospace">${student.roll_no}</span>
+                                </p>
                             </div>
                         </div>
                         <div class="form-group">
@@ -1285,7 +1287,8 @@ class SurveillXApp {
                         </div>
                         <div class="form-group">
                             <label>Face Data</label>
-                            <span class="badge ${student.has_face_encoding ? 'success' : 'warning'}">
+                            <span class="status-badge ${student.has_face_encoding ? 'registered' : 'pending'}">
+                                <span class="status-dot"></span>
                                 ${student.has_face_encoding ? 'Registered' : 'Not Registered'}
                             </span>
                         </div>
