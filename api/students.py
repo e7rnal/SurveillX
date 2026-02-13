@@ -40,8 +40,14 @@ def add_student():
         class_name = data.get('class')
         photos = data.get('photos', [])
 
-        if not name or not roll_no:
-            return jsonify({"error": "Name and roll number are required"}), 400
+        # Validate input data
+        from api.enrollment import validate_enrollment_data
+        validation_errors = validate_enrollment_data(name, roll_no, contact_no)
+        if validation_errors:
+            return jsonify({
+                "error": "Validation failed",
+                "details": validation_errors
+            }), 400
 
         face_encoding = None
 

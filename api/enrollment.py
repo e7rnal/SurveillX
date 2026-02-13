@@ -12,10 +12,73 @@ import numpy as np
 import cv2
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 
 enrollment_bp = Blueprint('enrollment', __name__)
 logger = logging.getLogger(__name__)
+
+
+def validate_enrollment_data(name, roll_no, contact_no=None):
+    """
+    Validate enrollment/student data
+    
+    Rules:
+    - Name: Minimum 2 words (first + last), each word minimum 3 characters
+    - Roll number: Minimum 2 characters, alphanumeric
+    - Contact: Optional, but if provided must be valid 10-digit Indian mobile
+    
+    Returns:
+        list: Validation errors (empty if valid)
+    """
+    errors = []
+    
+    # Name validation
+    if not name or not name.strip():
+        errors.append("Name is required")
+    else:
+        name = name.strip()
+        
+        # Check minimum length
+        if len(name) < 7:
+            errors.append("Name too short (minimum 7 characters)")
+        
+        # Split into words
+        name_parts = [part for part in name.split() if part]
+        
+        if len(name_parts) < 2:
+            errors.append("Full name required (First and Last name)")
+        
+        # Check each word length
+        for part in name_parts:
+            if len(part) < 3:
+                errors.append(f"Each name must be at least 3 characters (got: '{part}')")
+                break
+    
+    # Roll number validation
+    if not roll_no or not roll_no.strip():
+        errors.append("Roll number is required")
+    else:
+        roll_no = roll_no.strip()
+        
+        if len(roll_no) < 2:
+            errors.append("Roll number must be at least 2 characters")
+        
+        # Check if it's alphanumeric (allow hyphens)
+        if not re.match(r'^[A-Za-z0-9-]+$', roll_no):
+            errors.append("Roll number must be alphanumeric (letters, numbers, hyphens only)")
+    
+    # Phone validation (optional field)
+    if contact_no and contact_no.strip():
+        contact_no = contact_no.strip()
+        
+        # Remove any spaces or dashes
+        contact_clean = contact_no.replace(' ', '').replace('-', '')
+        
+        if not re.match(r'^[6-9][0-9]{9}$', contact_clean):
+            errors.append("Invalid phone number (must be 10 digits starting with 6-9)")
+    
+    return errors
 
 
 @enrollment_bp.route('/generate-link', methods=['POST'])
@@ -120,13 +183,23 @@ def submit_enrollment():
         data = request.get_json()
         token = data.get('token')
         name = data.get('name')
+        roll_no = data.get('roll_no')
+        contact_no = data.get('contact_no')
+        class_name = data.get('class')
         photos = data.get('photos', [])
 
-        if not name:
-            return jsonify({"error": "Name is required"}), 400
+        # Validate input data
+        validation_errors = validate_enrollment_data(name, roll_no, contact_no)
+        if validation_errors:
+            logger.warning(f"Enrollment validation failed: {validation_errors}")
+            return jsonify({
+                "error": "Validation failed",
+                "details": validation_errors
+            }), 400
 
-        if len(photos) < 5:
-            return jsonify({"error": "At least 5 photos required"}), 400
+        # Verify token
+        if not token:
+            return jsonify({"error": "Enrollment token is required"}), 400
 
         db = current_app.db
         token_data = None
