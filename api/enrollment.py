@@ -245,29 +245,50 @@ def approve_enrollment(enrollment_id):
         if not enrollment:
             return jsonify({"error": "Enrollment not found"}), 404
 
+        logger.info(f"Approving enrollment {enrollment_id}: {enrollment['name']}")
+        logger.info(f"  Roll no: {enrollment.get('roll_no')}")
+        logger.info(f"  Has sample_images: {enrollment.get('sample_images') is not None}")
+        logger.info(f"  Has pre-computed face_encoding: {enrollment.get('face_encoding') is not None}")
+
         # Check if we have a pre-computed embedding
         face_encoding = enrollment.get('face_encoding')
 
         if not face_encoding:
             # Try to generate embedding from stored photos
             face_service = getattr(current_app, 'face_service', None)
+            logger.info(f"  Face service available: {face_service is not None}")
+            
+            if face_service:
+                logger.info(f"  Face service model loaded: {face_service.app is not None}")
+            
             sample_images = enrollment.get('sample_images')
 
-            if face_service and sample_images:
+            if not face_service:
+                logger.warning("Face service not available - cannot generate embedding!")
+            elif not sample_images:
+                logger.warning("No sample images in enrollment - cannot generate embedding!")
+            elif face_service and sample_images:
                 try:
                     if isinstance(sample_images, str):
                         sample_images = json.loads(sample_images)
 
+                    logger.info(f"  Decoding {len(sample_images)} photos...")
                     frames = [_decode_photo(p) for p in sample_images]
                     frames = [f for f in frames if f is not None]
+                    logger.info(f"  Successfully decoded {len(frames)}/{len(sample_images)} photos")
 
                     if frames:
+                        logger.info("  Generating face embedding...")
                         result = face_service.encode_multiple(frames)
                         if result['embedding']:
                             face_encoding = json.dumps(result['embedding'])
-                            logger.info(f"Generated embedding on approval from {result['valid_count']} photos")
+                            logger.info(f"✅ Generated embedding from {result['valid_count']} photos (size: {len(result['embedding'])})")
+                        else:
+                            logger.error(f"Failed to generate embedding: {result.get('errors', 'Unknown error')}")
+                    else:
+                        logger.error("No valid frames decoded from photos!")
                 except Exception as e:
-                    logger.error(f"Error generating embedding on approval: {e}")
+                    logger.error(f"Error generating embedding on approval: {e}", exc_info=True)
 
         # Create student
         student_id = db.add_student(
