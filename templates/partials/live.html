@@ -1,348 +1,614 @@
-<div class="live-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem;">
-    <!-- Camera Feed Card 1 (MAIN STREAM - Default Camera) -->
-    <div class="camera-card" id="main-camera-card"
-        style="background: var(--bg-card); border-radius: 1rem; overflow: hidden; border: var(--glass-border); grid-column: span 2;">
-        <div class="cam-header"
-            style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <div class="cam-info">
-                <i class="fa-solid fa-circle text-success" id="cam1-status"
-                    style="font-size: 0.5rem; margin-right: 0.5rem; animation: pulse 1s infinite;"></i>
-                <span style="font-weight: 500;">Entrance Gate - MAIN AI FEED</span>
-            </div>
-            <div>
-                <span style="font-size: 0.75rem; color: var(--text-secondary); margin-right: 1rem;">1080p | 60fps</span>
-                <span
-                    style="background: var(--accent); color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">AI
-                    ACTIVE</span>
+<!-- Multi-Camera Grid with Real Streaming Support -->
+<div class="camera-grid-container">
+    <!-- Grid Controls -->
+    <div class="grid-controls">
+        <div class="control-group">
+            <label>Layout:</label>
+            <button class="layout-button active" data-layout="1" title="Single Main Camera">
+                <svg viewBox="0 0 24 24">
+                    <rect x="4" y="4" width="16" height="16" fill="currentColor" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="control-group">
+            <select id="stream-mode-select"
+                style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:6px;font-size:0.875rem;">
+                <option value="jpegws">JPEG WebSocket</option>
+                <option value="fastrtc">FastRTC</option>
+            </select>
+
+            <button class="btn btn-sm" id="connect-btn">
+                <i class="fas fa-plug"></i> Connect
+            </button>
+            <button class="btn btn-sm" id="disconnect-btn" style="display:none;">
+                <i class="fas fa-plug-circle-xmark"></i> Disconnect
+            </button>
+            <button class="btn btn-sm" id="fullscreen-toggle">
+                <i class="fas fa-expand"></i> Fullscreen
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Camera Feed -->
+    <div class="main-camera-feed">
+        <div class="feed-header">
+            <span class="feed-label">
+                <i class="fa-solid fa-video"></i> <span id="camera-name">Main Camera</span>
+            </span>
+            <span class="feed-status" id="stream-status">
+                <i class="fa-solid fa-circle"></i> Disconnected
+            </span>
+        </div>
+
+        <div class="feed-container" id="feed-container" style="position:relative; background:#000; aspect-ratio:16/9;">
+            <canvas id="live-canvas" width="1280" height="720" style="width:100%; height:100%;"></canvas>
+            <canvas id="detection-canvas" width="1280" height="720"
+                style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+
+            <!-- No Stream Overlay -->
+            <div class="feed-overlay" id="feed-overlay">
+                <i class="fa-solid fa-video-slash"></i>
+                <div>No video stream</div>
+                <div class="hint">Click Connect to start streaming</div>
             </div>
         </div>
-        <div class="cam-feed" id="main-feed"
-            style="aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden;">
 
-            <!-- Loading State -->
-            <div id="cam1-loading"
-                style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5;">
-                <i class="fa-solid fa-video"
-                    style="font-size: 3rem; color: rgba(255,255,255,0.3); margin-bottom: 1rem;"></i>
-                <p style="color: rgba(255,255,255,0.6);">Initializing camera...</p>
+        <div class="feed-info">
+            <div id="detection-info">
+                <i class="fa-solid fa-face-smile"></i> Faces: <span id="face-count">0</span> |
+                <i class="fa-solid fa-person-running"></i> Activity: <span id="activity-status">Normal</span> |
+                <i class="fa-solid fa-gauge"></i> FPS: <span id="fps-display">0</span> |
+                <span id="connection-status">Latency: <span id="latency-display">--</span>ms</span>
             </div>
+        </div>
+    </div>
 
-            <!-- Video Element -->
-            <video id="camera-stream" autoplay playsinline muted
-                style="width: 100%; height: 100%; object-fit: cover; display: none;">
-            </video>
+    <!-- Sidebar -->
+    <div class="live-sidebar">
+        <div class="card">
+            <h3><i class="fa-solid fa-signal"></i> Stream Status</h3>
+            <div class="status-item">
+                <span>Connection</span>
+                <span id="ws-status" class="status-badge disconnected">Disconnected</span>
+            </div>
+            <div class="status-item">
+                <span>Resolution</span>
+                <span id="resolution-display">--</span>
+            </div>
+            <div class="status-item">
+                <span>Frames</span>
+                <span id="frame-count">0</span>
+            </div>
+            <div class="status-item">
+                <span>Mode</span>
+                <span id="current-mode">--</span>
+            </div>
+        </div>
 
-            <!-- AI Detection Overlay -->
-            <div id="ai-overlay" style="position: absolute; inset: 0; pointer-events: none; display: none;">
-                <!-- Scanning Line Animation -->
-                <div class="scan-line"></div>
-
-                <!-- Face Detection Box Simulation -->
-                <div class="face-box" style="top: 30%; left: 40%; width: 100px; height: 100px;">
-                    <span class="face-tag">Processing...</span>
+        <div class="card">
+            <h3><i class="fa-solid fa-user-check"></i> Live Detections</h3>
+            <div id="live-detections" class="detection-list">
+                <div class="empty-state small">
+                    <i class="fa-solid fa-eye-slash"></i>
+                    <p>No detections</p>
                 </div>
             </div>
+        </div>
 
-            <!-- Overlay Info -->
-            <div
-                style="position: absolute; bottom: 1rem; left: 1rem; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 0.8rem; z-index: 10;">
-                DATETIME: <span id="cam-time">--:--:--</span> <br>
-                CAM_ID: 8847-ENT-01
-            </div>
-
-            <!-- LIVE Badge -->
-            <div class="overlay"
-                style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,0,0,0.8); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; z-index: 10;">
-                ● LIVE
-            </div>
-        </div>
-        <div class="cam-footer"
-            style="padding: 1rem; display: flex; gap: 0.5rem; justify-content: space-between; align-items: center;">
-            <div style="display: flex; gap:0.5rem;">
-                <button id="btn-toggle-camera"
-                    style="padding: 0.5rem 1rem; background: var(--accent); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
-                    <i class="fa-solid fa-play"></i> Start
-                </button>
-                <button
-                    style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
-                    <i class="fa-solid fa-camera"></i> Snapshot
-                </button>
-            </div>
-            <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                Latency: <span id="latency">--</span>ms
-            </div>
-        </div>
-    </div>
-
-    <!-- Camera Feed Card 2 (Secondary - Static Demo) -->
-    <div class="camera-card"
-        style="background: var(--bg-card); border-radius: 1rem; overflow: hidden; border: var(--glass-border);">
-        <div class="cam-header"
-            style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <div class="cam-info">
-                <i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
-                <span style="font-weight: 500;">Corridor A</span>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--text-secondary);">720p</span>
-        </div>
-        <div class="cam-feed"
-            style="aspect-ratio: 16/9; background: #000; position: relative; display: flex; align-items: center; justify-content: center;">
-            <img src="https://images.unsplash.com/photo-1563205764-6e1b21f36453?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5;" alt="Corridor">
-            <div class="overlay"
-                style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.6); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem;">
-                LIVE</div>
-        </div>
-    </div>
-
-    <!-- Camera Feed Card 3 (Secondary - Static Demo) -->
-    <div class="camera-card"
-        style="background: var(--bg-card); border-radius: 1rem; overflow: hidden; border: var(--glass-border);">
-        <div class="cam-header"
-            style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <div class="cam-info">
-                <i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
-                <span style="font-weight: 500;">Library Hall</span>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--text-secondary);">720p</span>
-        </div>
-        <div class="cam-feed"
-            style="aspect-ratio: 16/9; background: #000; position: relative; display: flex; align-items: center; justify-content: center;">
-            <img src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5;" alt="Library">
-            <div class="overlay"
-                style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.6); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem;">
-                LIVE</div>
+        <div class="card">
+            <h3><i class="fa-solid fa-camera"></i> Quick Actions</h3>
+            <button class="btn secondary full-width" onclick="window.captureSnapshot()" style="margin-bottom:0.5rem;">
+                <i class="fa-solid fa-camera"></i> Capture Snapshot
+            </button>
+            <button class="btn secondary full-width" onclick="window.renameCamera()">
+                <i class="fa-solid fa-pen"></i> Rename Camera
+            </button>
         </div>
     </div>
 </div>
 
-<style>
-    .scan-line {
-        position: absolute;
-        width: 100%;
-        height: 2px;
-        background: rgba(59, 130, 246, 0.8);
-        box-shadow: 0 0 4px rgba(59, 130, 246, 0.8);
-        top: 0;
-        left: 0;
-        animation: scan 3s linear infinite;
-        z-index: 10;
-    }
-
-    @keyframes scan {
-        0% {
-            top: 0%;
-            opacity: 0;
-        }
-
-        10% {
-            opacity: 1;
-        }
-
-        90% {
-            opacity: 1;
-        }
-
-        100% {
-            top: 100%;
-            opacity: 0;
-        }
-    }
-
-    .face-box {
-        position: absolute;
-        border: 2px solid var(--accent);
-        box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
-        z-index: 5;
-        animation: float-box 5s ease-in-out infinite alternate;
-    }
-
-    .face-tag {
-        position: absolute;
-        top: -20px;
-        left: 0;
-        background: var(--accent);
-        color: white;
-        font-size: 0.7rem;
-        padding: 2px 4px;
-        border-radius: 2px;
-    }
-
-    @keyframes float-box {
-        0% {
-            transform: translate(0, 0);
-        }
-
-        33% {
-            transform: translate(20px, 15px);
-        }
-
-        66% {
-            transform: translate(-10px, 30px);
-        }
-
-        100% {
-            transform: translate(5px, -10px);
-        }
-    }
-
-    @keyframes pulse {
-        0% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.4;
-        }
-
-        100% {
-            opacity: 1;
-        }
-    }
-</style>
-
 <script>
+    // Camera Stream Manager - Integrates with existing app.js streaming
     (function () {
-        let stream = null;
-        let isStreaming = false;
+        const CameraStreamManager = {
+            socket: null,
+            isConnected: false,
+            streamMode: 'jpegws',
+            frameCount: 0,
+            lastFrameTime: null,
 
-        // Initialize camera stream
-        async function initCamera() {
-            const videoElement = document.getElementById('camera-stream');
-            const loadingEl = document.getElementById('cam1-loading');
-            const aiOverlay = document.getElementById('ai-overlay');
-            const statusIcon = document.getElementById('cam1-status');
-            const toggleBtn = document.getElementById('btn-toggle-camera');
-            const latencyEl = document.getElementById('latency');
+            init() {
+                this.setupControls();
+                this.loadStreamConfig();
+                this.syncUIWithApp();
+            },
 
-            if (!videoElement) {
-                console.error('Video element not found');
-                return;
-            }
-
-            try {
-                // Request camera access
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    },
-                    audio: false
+            setupControls() {
+                // Connect button
+                document.getElementById('connect-btn')?.addEventListener('click', () => {
+                    this.connect();
                 });
 
-                // Attach stream to video element
-                videoElement.srcObject = stream;
-
-                // Wait for video to be ready
-                await new Promise(resolve => {
-                    videoElement.onloadedmetadata = () => {
-                        videoElement.play();
-                        resolve();
-                    };
+                // Disconnect button
+                document.getElementById('disconnect-btn')?.addEventListener('click', () => {
+                    this.disconnect();
                 });
 
-                // Hide loading, show video
-                loadingEl.style.display = 'none';
-                videoElement.style.display = 'block';
+                // Stream mode selector
+                document.getElementById('stream-mode-select')?.addEventListener('change', (e) => {
+                    this.streamMode = e.target.value;
+                    this.saveStreamConfig();
+                    if (this.isConnected) {
+                        this.disconnect();
+                        setTimeout(() => this.connect(), 500);
+                    }
+                });
 
-                // Show AI overlay after 1 second
-                setTimeout(() => {
-                    aiOverlay.style.display = 'block';
-                }, 1000);
+                // Fullscreen
+                document.getElementById('fullscreen-toggle')?.addEventListener('click', () => {
+                    const container = document.getElementById('feed-container');
+                    if (!document.fullscreenElement) {
+                        container.requestFullscreen();
+                    } else {
+                        document.exitFullscreen();
+                    }
+                });
+            },
 
-                // Update button
-                toggleBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop';
-                toggleBtn.style.background = 'rgba(239, 68, 68, 0.8)';
-                isStreaming = true;
+            async loadStreamConfig() {
+                try {
+                    const response = await fetch('/api/stream/config');
+                    const data = await response.json();
+                    this.streamMode = data.current_mode || 'jpegws';
+                    const select = document.getElementById('stream-mode-select');
+                    if (select) select.value = this.streamMode;
+                    document.getElementById('current-mode').textContent = this.streamMode.toUpperCase();
+                } catch (error) {
+                    console.error('Failed to load stream config:', error);
+                }
+            },
 
-                // Simulate latency
-                latencyEl.textContent = Math.floor(Math.random() * 20) + 15;
+            async saveStreamConfig() {
+                try {
+                    await fetch('/api/stream/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: this.streamMode })
+                    });
+                } catch (error) {
+                    console.error('Failed to save stream config:', error);
+                }
+            },
 
-                console.log('Camera stream started successfully');
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                loadingEl.innerHTML = `
-                <i class="fa-solid fa-video-slash" style="font-size: 3rem; color: rgba(255,68,68,0.5);"></i>
-                <p style="color: rgba(255,68,68,0.8); margin-top: 1rem;">Camera access denied or not available</p>
-                <p style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">Please grant camera permissions</p>
-            `;
-                statusIcon.classList.remove('text-success');
-                statusIcon.style.color = '#ef4444';
-                toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i> Retry';
-            }
-        }
+            connect() {
+                if (this.isConnected) return;
 
-        // Stop camera stream
-        function stopCamera() {
-            const videoElement = document.getElementById('camera-stream');
-            const loadingEl = document.getElementById('cam1-loading');
-            const aiOverlay = document.getElementById('ai-overlay');
-            const toggleBtn = document.getElementById('btn-toggle-camera');
-            const statusIcon = document.getElementById('cam1-status');
+                // Use existing app socket connection
+                if (window.app && window.app.socket) {
+                    this.socket = window.app.socket;
+                    this.isConnected = true;
+                    this.updateConnectionUI(true);
 
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
+                    // Setup frame handler if not already done
+                    if (window.app.handleFrame) {
+                        this.startFPSMonitoring();
+                    }
+                } else {
+                    console.error('App socket not available');
+                    this.updateConnectionUI(false, 'App not initialized');
+                }
+            },
 
-            videoElement.style.display = 'none';
-            aiOverlay.style.display = 'none';
-            loadingEl.style.display = 'flex';
-            loadingEl.innerHTML = `
-            <i class="fa-solid fa-video" style="font-size: 3rem; color: rgba(255,255,255,0.3); margin-bottom: 1rem;"></i>
-            <p style="color: rgba(255,255,255,0.6);">Camera stopped</p>
-        `;
+            disconnect() {
+                this.isConnected = false;
+                this.updateConnectionUI(false);
+                this.frameCount = 0;
+                document.getElementById('frame-count').textContent = '0';
+                document.getElementById('fps-display').textContent = '0';
 
-            toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i> Start';
-            toggleBtn.style.background = 'var(--accent)';
-            statusIcon.classList.remove('text-success');
-            statusIcon.style.color = '#94a3b8';
-            isStreaming = false;
-        }
+                // Clear canvas
+                const canvas = document.getElementById('live-canvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            },
 
-        // Toggle camera
-        function toggleCamera() {
-            if (isStreaming) {
-                stopCamera();
-            } else {
-                initCamera();
-            }
-        }
+            updateConnectionUI(connected, error = null) {
+                const status = document.getElementById('stream-status');
+                const wsStatus = document.getElementById('ws-status');
+                const overlay = document.getElementById('feed-overlay');
+                const connectBtn = document.getElementById('connect-btn');
+                const disconnectBtn = document.getElementById('disconnect-btn');
 
-        // Update time
-        function updateTime() {
-            const timeEl = document.getElementById('cam-time');
-            if (timeEl) {
+                if (connected) {
+                    status.innerHTML = '<i class="fa-solid fa-circle" style="color:#10b981;"></i> Connected';
+                    wsStatus.textContent = 'Connected';
+                    wsStatus.className = 'status-badge connected';
+                    overlay.style.display = 'none';
+                    connectBtn.style.display = 'none';
+                    disconnectBtn.style.display = 'inline-flex';
+                } else {
+                    status.innerHTML = '<i class="fa-solid fa-circle" style="color:#ef4444;"></i> Disconnected';
+                    wsStatus.textContent = error || 'Disconnected';
+                    wsStatus.className = 'status-badge disconnected';
+                    overlay.style.display = 'flex';
+                    connectBtn.style.display = 'inline-flex';
+                    disconnectBtn.style.display = 'none';
+                }
+            },
+
+            startFPSMonitoring() {
                 setInterval(() => {
-                    const now = new Date();
-                    timeEl.textContent = now.toLocaleTimeString();
+                    if (this.isConnected && window.app) {
+                        const fps = window.app.frameCount || 0;
+                        document.getElementById('fps-display').textContent = fps;
+
+                        // Update frame count
+                        if (window.app.frameCount) {
+                            this.frameCount = window.app.frameCount;
+                            document.getElementById('frame-count').textContent = this.frameCount;
+                        }
+
+                        // Update resolution
+                        const canvas = document.getElementById('live-canvas');
+                        if (canvas && canvas.width > 0) {
+                            document.getElementById('resolution-display').textContent =
+                                `${canvas.width}x${canvas.height}`;
+                        }
+                    }
                 }, 1000);
+            },
+
+            syncUIWithApp() {
+                // Sync with app.js state
+                if (window.app && window.app.socket && window.app.socket.connected) {
+                    this.socket = window.app.socket;
+                    this.isConnected = true;
+                    this.updateConnectionUI(true);
+                    this.startFPSMonitoring();
+                }
+
+                // Listen for detection events
+                this.connectToDetections();
+            },
+
+            connectToDetections() {
+                // Connect to detection events from SocketIO
+                const setupListener = () => {
+                    if (window.app && window.app.socket) {
+                        console.log('Setting up detection listener');
+
+                        // Listen for detections
+                        window.app.socket.on('detection', (data) => {
+                            console.log('Detection received:', data);
+                            this.handleDetection(data);
+                        });
+
+                        // Listen for frames to hide overlay
+                        window.app.socket.on('frame', () => {
+                            const overlay = document.getElementById('feed-overlay');
+                            if (overlay) overlay.style.display = 'none';
+                        });
+                    } else {
+                        setTimeout(setupListener, 500);
+                    }
+                };
+                setupListener();
+            },
+
+            handleDetection(data) {
+                const faces = data.faces || [];
+                const activity = data.activity || {};
+
+                // Update face count
+                const faceCount = document.getElementById('face-count');
+                if (faceCount) faceCount.textContent = faces.length;
+
+                // Update activity status
+                const activityStatus = document.getElementById('activity-status');
+                if (activityStatus) {
+                    const type = activity.type || 'normal';
+                    activityStatus.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                    activityStatus.style.color = type === 'normal' ? '#10b981' : '#f59e0b';
+                }
+
+                // Update detections list
+                this.updateDetectionsList(faces);
+
+                // Draw overlays
+                this.drawDetectionOverlay(faces, activity);
+            },
+
+            updateDetectionsList(faces) {
+                const list = document.getElementById('live-detections');
+                if (!list) return;
+
+                if (faces.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state small">
+                            <i class="fa-solid fa-eye-slash"></i>
+                            <p>No detections</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = faces.map(face => {
+                    const name = face.student_name || 'Unknown';
+                    const conf = face.confidence ? `${(face.confidence * 100).toFixed(0)}%` : '';
+                    const initial = name[0] || '?';
+                    const color = face.student_id ? '#10b981' : '#6b7280';
+
+                    return `
+                        <div class="list-item" style="padding:0.5rem;border-bottom:1px solid var(--border);">
+                            <div class="avatar" style="width:32px;height:32px;font-size:0.8rem;background:${color};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initial}</div>
+                            <div class="item-content" style="flex:1;margin-left:0.75rem;">
+                                <div class="item-title" style="font-size:0.85rem;font-weight:500;">${name}</div>
+                                <div class="item-subtitle" style="font-size:0.75rem;color:var(--text-secondary);">${conf}${face.age ? ' · Age ' + face.age : ''}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            drawDetectionOverlay(faces, activity) {
+                const canvas = document.getElementById('detection-canvas');
+                const videoCanvas = document.getElementById('live-canvas');
+                if (!canvas || !videoCanvas) return;
+
+                // Sync canvas size
+                canvas.width = videoCanvas.width;
+                canvas.height = videoCanvas.height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw face boxes
+                faces.forEach(face => {
+                    const loc = face.location;
+                    if (!loc) return;
+
+                    const x = loc.left;
+                    const y = loc.top;
+                    const w = loc.right - loc.left;
+                    const h = loc.bottom - loc.top;
+
+                    const recognized = !!face.student_id;
+                    const color = recognized ? '#10b981' : '#3b82f6';
+
+                    // Bounding box
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, w, h);
+
+                    // Label
+                    const name = face.student_name || 'Unknown';
+                    const conf = face.confidence ? ` ${(face.confidence * 100).toFixed(0)}%` : '';
+                    const label = `${name}${conf}`;
+
+                    ctx.font = 'bold 16px Inter, sans-serif';
+                    const tw = ctx.measureText(label).width + 12;
+
+                    // Label background
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y - 26, tw, 26);
+
+                    // Label text
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(label, x + 6, y - 7);
+                });
+
+                // Draw activity badge if abnormal
+                const activityType = activity.type || 'normal';
+                if (activityType !== 'normal') {
+                    const label = activityType.toUpperCase();
+                    const color = '#f59e0b';
+
+                    ctx.font = 'bold 18px Inter, sans-serif';
+                    const tw = ctx.measureText(label).width + 24;
+                    const bx = canvas.width - tw - 15;
+                    const by = 15;
+
+                    ctx.fillStyle = color;
+                    ctx.globalAlpha = 0.9;
+                    ctx.fillRect(bx, by, tw, 36);
+                    ctx.globalAlpha = 1;
+
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(label, bx + 12, by + 25);
+                }
             }
-        }
 
-        // Wait for DOM ready
+        };
+
+        // Global functions for quick actions
+        window.captureSnapshot = function () {
+            const canvas = document.getElementById('live-canvas');
+            if (!canvas) return;
+
+            const link = document.createElement('a');
+            link.download = `snapshot_${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+
+            if (window.Toast) {
+                window.Toast.success('Snapshot saved!');
+            }
+        };
+
+        window.renameCamera = function () {
+            const currentName = document.getElementById('camera-name').textContent;
+            const newName = prompt('Enter new camera name:', currentName);
+            if (newName && newName.trim()) {
+                document.getElementById('camera-name').textContent = newName.trim();
+                localStorage.setItem('cameraName', newName.trim());
+                if (window.Toast) {
+                    window.Toast.success('Camera renamed!');
+                }
+            }
+        };
+
+        // Initialize
         const initWhenReady = () => {
-            const toggleBtn = document.getElementById('btn-toggle-camera');
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', toggleCamera);
-                updateTime();
+            if (document.getElementById('stream-mode-select')) {
+                CameraStreamManager.init();
 
-                // Auto-start camera after 500ms
-                setTimeout(() => {
-                    initCamera();
-                }, 500);
+                // Load saved camera name
+                const savedName = localStorage.getItem('cameraName');
+                if (savedName) {
+                    document.getElementById('camera-name').textContent = savedName;
+                }
             } else {
-                // Retry after 100ms if button not found yet
                 setTimeout(initWhenReady, 100);
             }
         };
 
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initWhenReady);
-        } else {
-            initWhenReady();
-        }
+        setTimeout(initWhenReady, 100);
     })();
 </script>
+
+<style>
+    .main-camera-feed {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--bg-card);
+    }
+
+    .feed-header {
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-tertiary);
+    }
+
+    .feed-label {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .feed-status {
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .feed-container {
+        position: relative;
+        background: #000;
+    }
+
+    .feed-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.9);
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 3rem;
+    }
+
+    .feed-overlay div {
+        font-size: 1rem;
+        margin-top: 1rem;
+    }
+
+    .feed-overlay .hint {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    .feed-info {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg-tertiary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.875rem;
+    }
+
+    .camera-grid-container {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 1.5rem;
+        grid-template-rows: auto 1fr;
+    }
+
+    .grid-controls {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .control-group label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .layout-button {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .layout-button:hover {
+        background: var(--bg-secondary);
+        border-color: var(--accent);
+        color: var(--text-primary);
+    }
+
+    .layout-button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .layout-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .live-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    @media (max-width: 1024px) {
+        .camera-grid-container {
+            grid-template-columns: 1fr;
+        }
+
+        .live-sidebar {
+            grid-column: 1;
+        }
+    }
+</style>
