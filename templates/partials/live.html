@@ -284,11 +284,15 @@
                 // Connect to detection events from SocketIO
                 const setupListener = () => {
                     if (window.app && window.app.socket) {
-                        console.log('Setting up detection listener');
+                        console.log('🔌 Setting up detection listener on socket:', window.app.socket);
+                        console.log('📡 Socket connected:', window.app.socket.connected);
+                        console.log('🌐 Socket namespace:', window.app.socket.nsp);
 
                         // Listen for detections
                         window.app.socket.on('detection', (data) => {
-                            console.log('Detection received:', data);
+                            console.log('📥 Detection event received!', data);
+                            console.log('👤 Faces:', data.faces?.length || 0);
+                            console.log('🏃 Activity:', data.activity?.type || 'none');
                             this.handleDetection(data);
                         });
 
@@ -297,7 +301,10 @@
                             const overlay = document.getElementById('feed-overlay');
                             if (overlay) overlay.style.display = 'none';
                         });
+
+                        console.log('✅ Detection listener setup complete');
                     } else {
+                        console.log('⏳ Waiting for app.socket to be available...');
                         setTimeout(setupListener, 500);
                     }
                 };

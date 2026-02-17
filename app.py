@@ -82,6 +82,20 @@ def register_page():
 def enroll_page():
     return send_from_directory('templates', 'enroll.html')
 
+# API endpoint to serve partial HTML templates
+@app.route('/api/partials/<page>')
+def serve_partial(page):
+    """Serve partial HTML templates for SPA pages"""
+    allowed_partials = ['dashboard', 'live', 'alerts', 'attendance', 'students', 'settings']
+    if page in allowed_partials:
+        try:
+            return send_from_directory('templates/partials', f'{page}.html')
+        except Exception as e:
+            logger.error(f"Failed to load partial {page}: {e}")
+            return jsonify({"error": "Partial not found"}), 404
+    return jsonify({"error": "Invalid partial"}), 400
+
+
 # API root
 @app.route('/api')
 def api_info():
@@ -140,6 +154,7 @@ def receive_detections():
     try:
         data = request.get_json(silent=True)
         if not data:
+            logger.warning("⚠️ Received empty detection data")
             return jsonify({"error": "No data"}), 400
 
         # Serialize face data (remove numpy arrays)
@@ -148,9 +163,11 @@ def receive_detections():
             face.pop('embedding', None)  # Don't broadcast raw embeddings
 
         activity = data.get('activity', {})
+        
+        logger.info(f"📥 Flask received detection: {len(faces)} faces, activity: {activity.get('type', 'normal')}")
 
         # Broadcast to dashboard
-        socketio.emit('detection', {
+        detection_data = {
             'faces': faces,
             'activity': {
                 'type': activity.get('type', 'normal'),
@@ -161,11 +178,15 @@ def receive_detections():
             },
             'persons': activity.get('persons', []),
             'timestamp': data.get('timestamp', ''),
-        }, namespace='/stream')
+        }
+        
+        socketio.emit('detection', detection_data, namespace='/stream')
+        logger.info(f"📤 Broadcasted detection to /stream namespace")
+        logger.debug(f"Detection payload: {detection_data}")
 
         return jsonify({"ok": True}), 200
     except Exception as e:
-        logger.error(f"Detection broadcast error: {e}")
+        logger.error(f"❌ Detection broadcast error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 

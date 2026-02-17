@@ -172,13 +172,30 @@ class MLWorker:
     def _push_detections(self, detections):
         """Push detection results to Flask for SocketIO broadcast."""
         try:
-            requests.post(
+            faces_count = len(detections.get('faces', []))
+            activity_type = detections.get('activity', {}).get('type', 'unknown')
+            
+            logger.info(f"📊 Pushing detection: {faces_count} faces, activity: {activity_type}")
+            logger.debug(f"Detection data: {detections}")
+            
+            response = requests.post(
                 f"{FLASK_API_URL}/api/stream/detections",
                 json=detections,
                 timeout=2
             )
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Detection pushed successfully to Flask")
+            else:
+                logger.warning(f"⚠️ Flask returned status {response.status_code}: {response.text}")
+                
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"❌ Connection error pushing detections: {e}")
+        except requests.exceptions.Timeout:
+            logger.error(f"⏱️ Timeout pushing detections to Flask")
         except Exception as e:
-            logger.debug(f"Detection push error: {e}")
+            logger.error(f"❌ Detection push error: {e}", exc_info=True)
+
 
     async def run(self):
         """Main loop: connect to WS hub as viewer, process frames."""
