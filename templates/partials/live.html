@@ -184,18 +184,24 @@
             connect() {
                 if (this.isConnected) return;
 
-                // Use existing app socket connection
-                if (window.app && window.app.socket) {
-                    this.socket = window.app.socket;
-                    this.isConnected = true;
-                    this.updateConnectionUI(true);
+                // Trigger the actual connection through app.js
+                if (window.app && window.app.connectSocket) {
+                    window.app.connectSocket();
 
-                    // Setup frame handler if not already done
-                    if (window.app.handleFrame) {
-                        this.startFPSMonitoring();
-                    }
+                    // Give it a moment to establish connection
+                    setTimeout(() => {
+                        if (window.app.socket) {
+                            this.socket = window.app.socket;
+                            this.isConnected = true;
+                            this.updateConnectionUI(true);
+                            this.startFPSMonitoring();
+                            console.log('Connected to stream via app.js socket');
+                        } else {
+                            this.updateConnectionUI(false, 'Socket connection failed');
+                        }
+                    }, 500);
                 } else {
-                    console.error('App socket not available');
+                    console.error('App not available or connectSocket not found');
                     this.updateConnectionUI(false, 'App not initialized');
                 }
             },
