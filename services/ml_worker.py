@@ -12,6 +12,15 @@ Usage:
 This runs independently of gst_streaming_server.py and app.py.
 """
 
+import sys
+import os
+
+# Ensure parent directory is in path for imports
+if __name__ == '__main__':
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
+
 import asyncio
 import base64
 import json
