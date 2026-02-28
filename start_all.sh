@@ -20,6 +20,8 @@ mkdir -p logs pids
 
 # ---- Configuration ----
 FLASK_PORT=5000
+WS_PORT=8443
+FASTRTC_PORT=8080
 
 # ---- Helper Functions ----
 
@@ -54,7 +56,7 @@ kill_by_pattern() {
         for pid in $pids; do
             kill -9 "$pid" 2>/dev/null || true
         done
-        echo "   ✅ Stopped $name (PIDs: $pids)"
+        echo "   ✅ Stopped $name"
     fi
 }
 
@@ -73,17 +75,21 @@ stop_all() {
     echo "🛑 Stopping all SurveillX services..."
 
     # 1. Stop by PID files
+    kill_by_pid_file "pids/ws_hub.pid" "WS Streaming Hub"
+    kill_by_pid_file "pids/fastrtc.pid" "FastRTC Hub"
     kill_by_pid_file "pids/flask.pid" "Flask Server"
     kill_by_pid_file "pids/ml_worker.pid" "ML Worker"
 
     # 2. Stop by process pattern (catches anything started outside the script)
+    kill_by_pattern "python3.*gst_streaming_server" "GStreamer Hub (by pattern)"
+    kill_by_pattern "python3.*fastrtc_server" "FastRTC (by pattern)"
     kill_by_pattern "python3.*app\.py" "Flask (by pattern)"
     kill_by_pattern "python3.*ml_worker\.py" "ML Worker (by pattern)"
-    kill_by_pattern "python3.*fastrtc_server" "FastRTC (legacy)"
-    kill_by_pattern "python3.*gst_streaming" "GStreamer Hub (legacy)"
 
     # 3. Force-clear known ports
     kill_by_port $FLASK_PORT
+    kill_by_port $WS_PORT
+    kill_by_port $FASTRTC_PORT
 
     # Clean PID files
     rm -f pids/*.pid
@@ -92,9 +98,9 @@ stop_all() {
     echo "✅ All services stopped."
 
     # Verify
-    local remaining=$(ss -tlnp 2>/dev/null | grep -E ":${FLASK_PORT}\b" || true)
+    local remaining=$(ss -tlnp 2>/dev/null | grep -E ":(${FLASK_PORT}|${WS_PORT}|${FASTRTC_PORT})\b" || true)
     if [ -n "$remaining" ]; then
-        echo "⚠️  Warning: Port $FLASK_PORT still in use:"
+        echo "⚠️  Warning: Some ports still in use:"
         echo "   $remaining"
     fi
 }
@@ -104,9 +110,33 @@ status_all() {
     echo "📊 SurveillX Service Status"
     echo "─────────────────────────────────────"
 
+    # Check WS Hub
+    if [ -f "pids/ws_hub.pid" ] && kill -0 $(cat pids/ws_hub.pid) 2>/dev/null; then
+        echo "   ✅ WS Streaming Hub — running (PID $(cat pids/ws_hub.pid), port $WS_PORT)"
+    else
+        local ws_pid=$(pgrep -f "python3.*gst_streaming_server" 2>/dev/null | head -1 || true)
+        if [ -n "$ws_pid" ]; then
+            echo "   ✅ WS Streaming Hub — running (PID $ws_pid, no pidfile)"
+        else
+            echo "   ❌ WS Streaming Hub — stopped"
+        fi
+    fi
+
+    # Check FastRTC
+    if [ -f "pids/fastrtc.pid" ] && kill -0 $(cat pids/fastrtc.pid) 2>/dev/null; then
+        echo "   ✅ FastRTC Hub      — running (PID $(cat pids/fastrtc.pid), port $FASTRTC_PORT)"
+    else
+        local rtc_pid=$(pgrep -f "python3.*fastrtc_server" 2>/dev/null | head -1 || true)
+        if [ -n "$rtc_pid" ]; then
+            echo "   ✅ FastRTC Hub      — running (PID $rtc_pid, no pidfile)"
+        else
+            echo "   ❌ FastRTC Hub      — stopped"
+        fi
+    fi
+
     # Check Flask
     if [ -f "pids/flask.pid" ] && kill -0 $(cat pids/flask.pid) 2>/dev/null; then
-        echo "   ✅ Flask Server     — running (PID $(cat pids/flask.pid))"
+        echo "   ✅ Flask Server     — running (PID $(cat pids/flask.pid), port $FLASK_PORT)"
     else
         local flask_pid=$(pgrep -f "python3.*app\.py" 2>/dev/null | head -1 || true)
         if [ -n "$flask_pid" ]; then
@@ -130,7 +160,7 @@ status_all() {
 
     echo "─────────────────────────────────────"
     echo "Ports:"
-    ss -tlnp 2>/dev/null | grep -E ":${FLASK_PORT}\b" || echo "   No SurveillX ports bound"
+    ss -tlnp 2>/dev/null | grep -E ":(${FLASK_PORT}|${WS_PORT}|${FASTRTC_PORT})\b" || echo "   No SurveillX ports bound"
     echo ""
 }
 
@@ -139,15 +169,27 @@ start_all() {
     echo "🚀 Starting SurveillX Services..."
     echo "─────────────────────────────────────"
 
-    # 1. Flask Dashboard + API (port 5000)
-    echo -n "   [1/2] Flask Dashboard (port $FLASK_PORT)... "
+    # 1. JPEG-WS Streaming Hub (port 8443)
+    echo -n "   [1/4] WS Streaming Hub (port $WS_PORT)... "
+    nohup python3 gst_streaming_server.py > logs/ws_hub.log 2>&1 &
+    echo $! > "pids/ws_hub.pid"
+    echo "PID $!"
+
+    # 2. FastRTC Streaming Hub (port 8080)
+    echo -n "   [2/4] FastRTC Hub (port $FASTRTC_PORT)... "
+    nohup python3 fastrtc_server.py > logs/fastrtc.log 2>&1 &
+    echo $! > "pids/fastrtc.pid"
+    echo "PID $!"
+
+    # 3. Flask Dashboard + API (port 5000)
+    echo -n "   [3/4] Flask Dashboard (port $FLASK_PORT)... "
     nohup python3 app.py > logs/flask.log 2>&1 &
     echo $! > "pids/flask.pid"
     echo "PID $!"
 
-    # 2. Wait for Flask to start, then launch ML Worker
+    # 4. Wait for servers to start, then launch ML Worker
     sleep 3
-    echo -n "   [2/2] ML Worker... "
+    echo -n "   [4/4] ML Worker... "
     nohup python3 services/ml_worker.py > logs/ml_worker.log 2>&1 &
     echo $! > "pids/ml_worker.pid"
     echo "PID $!"
@@ -168,7 +210,7 @@ start_all() {
         # Try to get public IP, fallback to hostname
         local ip=$(curl -s --connect-timeout 3 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
         echo "   📺 Dashboard:  http://${ip}:${FLASK_PORT}"
-        echo "   📁 Logs:       tail -f logs/flask.log"
+        echo "   📁 Logs:       tail -f logs/*.log"
         echo "   🛑 Stop:       bash start_all.sh stop"
         echo "   📊 Status:     bash start_all.sh status"
     else
