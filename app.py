@@ -11,6 +11,7 @@ from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
 from config import Config
 from services.db_manager import DBManager
+from services.email_service import EmailService
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,22 @@ db = DBManager(Config.DATABASE_URL)
 # Make db available to blueprints
 app.db = db
 
+# Initialize email service
+try:
+    email_service = EmailService(
+        aws_access_key=os.getenv('AWS_ACCESS_KEY_ID', ''),
+        aws_secret_key=os.getenv('AWS_SECRET_ACCESS_KEY', ''),
+        aws_region=os.getenv('AWS_REGION', 'ap-south-1'),
+        sender_email=os.getenv('SES_SENDER_EMAIL', ''),
+    )
+    app.email_service = email_service
+    ALERT_EMAIL_RECIPIENT = os.getenv('ALERT_EMAIL_RECIPIENT', os.getenv('SES_SENDER_EMAIL', ''))
+except Exception as e:
+    logger.warning(f"Email service not available: {e}")
+    email_service = None
+    app.email_service = None
+    ALERT_EMAIL_RECIPIENT = ''
+
 # Register blueprints
 from api.auth import auth_bp
 from api.students import students_bp
@@ -48,6 +65,8 @@ from api.cameras import cameras_bp
 from api.stats import stats_bp
 from api.enrollment import enrollment_bp
 from api.clips import clips_bp
+from api.detection import detection_bp
+from api.system_health import system_health_bp
 
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -58,6 +77,8 @@ app.register_blueprint(cameras_bp, url_prefix='/api/cameras')
 app.register_blueprint(stats_bp, url_prefix='/api/stats')
 app.register_blueprint(enrollment_bp, url_prefix='/api/enrollment')
 app.register_blueprint(clips_bp, url_prefix='/api/clips')
+app.register_blueprint(detection_bp, url_prefix='/api/detection')
+app.register_blueprint(system_health_bp, url_prefix='/api/system')
 
 
 # Frontend routes
@@ -86,7 +107,7 @@ def enroll_page():
 @app.route('/api/partials/<page>')
 def serve_partial(page):
     """Serve partial HTML templates for SPA pages"""
-    allowed_partials = ['dashboard', 'live', 'alerts', 'attendance', 'students', 'settings']
+    allowed_partials = ['dashboard', 'live', 'alerts', 'attendance', 'students', 'settings', 'detection-test']
     if page in allowed_partials:
         try:
             return send_from_directory('templates/partials', f'{page}.html')
@@ -94,6 +115,13 @@ def serve_partial(page):
             logger.error(f"Failed to load partial {page}: {e}")
             return jsonify({"error": "Partial not found"}), 404
     return jsonify({"error": "Invalid partial"}), 400
+
+
+# Serve uploaded files (face photos, snapshots)
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    """Serve uploaded files — face photos, alert snapshots."""
+    return send_from_directory('uploads', filename)
 
 
 # API root
@@ -147,6 +175,103 @@ def receive_frame():
         return jsonify({"error": str(e)}), 500
 
 
+# ---------- Attendance & Alert Auto-processing ----------
+import time as _time
+
+# In-memory dedup caches
+_attendance_cache = {}   # student_id → last_marked_timestamp
+_alert_cooldown = {}     # event_type → last_created_timestamp
+ATTENDANCE_DEDUP_SEC = 30 * 60   # 30 minutes
+ALERT_COOLDOWN_SEC = 60          # 60 seconds
+
+# Store latest detection for REST polling fallback
+_latest_detection = {}
+
+
+def _auto_mark_attendance(faces):
+    """Auto-mark attendance for recognized faces (with 30-min dedup)."""
+    now = _time.time()
+    logger.info(f"🔍 _auto_mark_attendance called with {len(faces)} faces")
+    for face in faces:
+        student_id = face.get('student_id')
+        name = face.get('student_name', f'ID:{student_id}')
+        if not student_id:
+            logger.debug(f"  Skipping face without student_id: {face.get('student_name', 'unknown')}")
+            continue
+        logger.info(f"  Processing: {name} (id={student_id})")
+        # Check in-memory cache first (fast)
+        last = _attendance_cache.get(student_id, 0)
+        if now - last < ATTENDANCE_DEDUP_SEC:
+            logger.info(f"  ⏭️ Skipped {name}: in-memory cache dedup ({int(now - last)}s ago)")
+            continue
+        # Double-check in DB
+        try:
+            recent = db.check_recent_attendance(student_id, minutes=30)
+            if recent:
+                _attendance_cache[student_id] = now
+                logger.info(f"  ⏭️ Skipped {name}: DB dedup (recent record found)")
+                continue
+            db.mark_attendance(student_id)
+            _attendance_cache[student_id] = now
+            logger.info(f"📝 Auto-marked attendance for {name} (id={student_id})")
+        except Exception as e:
+            logger.error(f"❌ Attendance error for student {student_id}: {e}", exc_info=True)
+
+
+def _auto_create_alert(activity, snapshot_path=None):
+    """Auto-create alert for abnormal activity (with 60-sec cooldown)."""
+    if not activity.get('is_abnormal'):
+        return
+    now = _time.time()
+    event_type = activity.get('type', 'unknown')
+    last = _alert_cooldown.get(event_type, 0)
+    if now - last < ALERT_COOLDOWN_SEC:
+        return
+    try:
+        alert_id = db.create_alert_with_snapshot(
+            event_type=event_type,
+            camera_id=1,
+            clip_path=None,
+            severity=activity.get('severity', 'medium'),
+            metadata={
+                'description': activity.get('description', ''),
+                'confidence': activity.get('confidence', 0),
+            },
+            snapshot_path=snapshot_path,
+        )
+        _alert_cooldown[event_type] = now
+        logger.info(f"🚨 Auto-created alert #{alert_id}: {event_type} ({activity.get('severity')}) snapshot={'yes' if snapshot_path else 'no'}")
+
+        # Broadcast alert event to frontend
+        socketio.emit('new_alert', {
+            'id': alert_id,
+            'event_type': event_type,
+            'severity': activity.get('severity', 'medium'),
+            'description': activity.get('description', ''),
+            'snapshot_path': snapshot_path,
+        }, namespace='/stream')
+
+        # Send email notification for high-severity alerts
+        if email_service and ALERT_EMAIL_RECIPIENT and activity.get('severity') in ('high', 'medium'):
+            try:
+                from datetime import datetime
+                email_service.send_alert_email(
+                    recipient_email=ALERT_EMAIL_RECIPIENT,
+                    alert_data={
+                        'event_type': event_type,
+                        'severity': activity.get('severity', 'medium'),
+                        'camera_id': 1,
+                        'description': activity.get('description', ''),
+                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    },
+                    base_url=os.getenv('BASE_URL', 'http://localhost:5000'),
+                )
+            except Exception as email_err:
+                logger.error(f"Alert email failed: {email_err}")
+    except Exception as e:
+        logger.error(f"Alert creation error: {e}")
+
+
 # Internal endpoint: receive ML detections and broadcast to browser
 @app.route('/api/stream/detections', methods=['POST'])
 def receive_detections():
@@ -163,8 +288,12 @@ def receive_detections():
             face.pop('embedding', None)  # Don't broadcast raw embeddings
 
         activity = data.get('activity', {})
-        
-        logger.info(f"📥 Flask received detection: {len(faces)} faces, activity: {activity.get('type', 'normal')}")
+
+        # --- Auto-mark attendance for recognized faces ---
+        _auto_mark_attendance(faces)
+
+        # --- Auto-create alerts for abnormal activity ---
+        _auto_create_alert(activity, snapshot_path=data.get('snapshot_path'))
 
         # Broadcast to dashboard
         detection_data = {
@@ -181,13 +310,26 @@ def receive_detections():
         }
         
         socketio.emit('detection', detection_data, namespace='/stream')
-        logger.info(f"📤 Broadcasted detection to /stream namespace")
-        logger.debug(f"Detection payload: {detection_data}")
+        
+        # Store for REST polling fallback
+        global _latest_detection
+        _latest_detection = detection_data
 
         return jsonify({"ok": True}), 200
     except Exception as e:
         logger.error(f"❌ Detection broadcast error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/detections/latest')
+def get_latest_detection():
+    """REST fallback: returns the latest detection data for polling."""
+    return jsonify(_latest_detection or {
+        'faces': [],
+        'activity': {'type': 'normal', 'is_abnormal': False, 'severity': 'low', 'confidence': 0, 'description': ''},
+        'persons': [],
+        'timestamp': ''
+    })
 
 
 # ML worker status
@@ -199,6 +341,35 @@ def ml_status():
         "activity_detector": "available",
         "note": "ML processing runs in separate ml_worker.py process",
     })
+
+
+# Internal endpoint: load known faces for ML Worker (no auth required)
+@app.route('/api/internal/known-faces', methods=['GET'])
+def get_known_faces():
+    """Return all students with face encodings for ML Worker.
+    This is an internal endpoint — no JWT required.
+    Only accessible from localhost (ML Worker runs on same host).
+    """
+    try:
+        # Security: only allow from localhost
+        remote = request.remote_addr
+        if remote not in ('127.0.0.1', '::1', 'localhost'):
+            return jsonify({"error": "Forbidden"}), 403
+
+        students = db.get_all_students()
+        faces = []
+        for s in students:
+            if s.get('face_encoding'):
+                faces.append({
+                    'id': s['id'],
+                    'name': s['name'],
+                    'face_encoding': s['face_encoding'],
+                })
+        logger.info(f"🧠 ML Worker requested known faces: {len(faces)} found")
+        return jsonify({"faces": faces})
+    except Exception as e:
+        logger.error(f"Error loading known faces: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------- Stream Mode Configuration ----------

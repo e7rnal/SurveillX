@@ -34,12 +34,12 @@ def decode_photo(photo_data):
 def retry_student_encoding(student_id):
     """Retry generating face encoding for a student"""
     with app.app_context():
-        from services.face_service import FaceService
+        from services.face_recognition_service import FaceRecognitionService
         from config import Config
         
         db = app.db
         config = Config()
-        face_service = FaceService(config)
+        face_service = FaceRecognitionService(config)
         
         if not face_service or not face_service.app:
             logger.error("Face service not available!")
@@ -57,13 +57,18 @@ def retry_student_encoding(student_id):
         # Find the corresponding pending enrollment
         query = "SELECT * FROM pending_enrollments WHERE name = %s AND status = 'approved' ORDER BY id DESC LIMIT 1"
         result = db.execute_query(query, (student['name'],))
-        
+       
         if not result:
             logger.error(f"No approved enrollment found for {student['name']}")
             return False
         
         enrollment = result[0]
         logger.info(f"Found enrollment ID: {enrollment['id']}")
+        
+        sample_images = enrollment.get('sample_images')
+        if not sample_images:
+            logger.error("No sample images in enrollment!")
+            return False
         
         sample_images = enrollment.get('sample_images')
         if not sample_images:

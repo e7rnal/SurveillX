@@ -1,78 +1,255 @@
-<div class="content-header" style="margin-bottom: 2rem;">
-    <h2 style="font-size: 1.25rem;">Security Alerts & Logs</h2>
-    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-        <select
-            style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white;">
-            <option>All Severity</option>
-            <option>Critical</option>
-            <option>Warning</option>
-            <option>Info</option>
-        </select>
-        <button class="btn-clear"
-            style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
-            <i class="fa-solid fa-trash"></i> Clear All
-        </button>
+<div x-data="alertsPage()" x-init="init()">
+    <div class="content-header" style="margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 1.25rem;">Security Alerts & Logs</h2>
+            <div x-show="stats.total > 0" style="display: flex; gap: 0.75rem; font-size: 0.85rem;">
+                <template x-for="(count, sev) in stats.by_severity" :key="sev">
+                    <span :style="'padding: 0.25rem 0.75rem; border-radius: 2rem; ' + severityBadgeStyle(sev)"
+                        x-text="count + ' ' + sev"></span>
+                </template>
+            </div>
+        </div>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+            <select x-model="filterSeverity" @change="fetchAlerts()"
+                style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white;">
+                <option value="">All Severity</option>
+                <option value="high">🔴 High</option>
+                <option value="medium">🟡 Medium</option>
+                <option value="low">🔵 Low</option>
+            </select>
+            <button @click="clearAll()"
+                style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
+                <i class="fa-solid fa-trash"></i> Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem;"></i>
+        <p style="margin-top: 1rem;">Loading alerts...</p>
+    </div>
+
+    <!-- Empty -->
+    <div x-show="!loading && alerts.length === 0"
+        style="text-align: center; padding: 4rem 2rem; background: var(--bg-card); border-radius: 1rem; border: var(--glass-border);">
+        <i class="fa-solid fa-shield-check" style="font-size: 3rem; color: var(--success); opacity: 0.6;"></i>
+        <h3 style="margin-top: 1rem; color: var(--text-secondary);">All Clear</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 400px; margin: 0.5rem auto;">
+            No security alerts at this time. Alerts are automatically generated when abnormal activity
+            (falling, fighting, running, loitering) is detected.
+        </p>
+    </div>
+
+    <!-- Alert list -->
+    <div x-show="!loading && alerts.length > 0" class="alerts-container"
+        style="display: flex; flex-direction: column; gap: 1rem;">
+        <template x-for="alert in alerts" :key="alert.id">
+            <div class="alert-item" :style="alertStyle(alert)"
+                style="padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem; transition: opacity 0.3s;"
+                :class="alert.dismissed ? 'opacity-50' : ''">
+                <div :style="iconStyle(alert)"
+                    style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i :class="alertIcon(alert.event_type)" style="font-size: 0.9rem;"></i>
+                </div>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <h3 style="margin: 0; font-size: 1rem; font-weight: 600;" x-text="alertTitle(alert)"></h3>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);"
+                            x-text="timeAgo(alert.timestamp)"></span>
+                    </div>
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);"
+                        x-text="alertDescription(alert)"></p>
+                    <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
+                        <span :style="severityPillStyle(alert.severity)"
+                            style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 2rem;"
+                            x-text="alert.severity"></span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);"
+                            x-text="'Camera ' + (alert.camera_id || 1)"></span>
+                        <span x-show="alert.dismissed"
+                            style="font-size: 0.75rem; color: var(--text-secondary); margin-left: auto;">✓
+                            Dismissed</span>
+                        <button x-show="!alert.dismissed" @click="dismissAlert(alert.id)"
+                            style="font-size: 0.8rem; background: none; color: var(--text-secondary); border: none; padding: 0.25rem 0.5rem; cursor: pointer; margin-left: auto;"
+                            @mouseover="$el.style.color='white'" @mouseout="$el.style.color='var(--text-secondary)'">
+                            Dismiss
+                        </button>
+                        <button @click="deleteAlert(alert.id)"
+                            style="font-size: 0.8rem; background: none; color: var(--text-secondary); border: none; padding: 0.25rem 0.5rem; cursor: pointer;"
+                            @mouseover="$el.style.color='var(--danger)'"
+                            @mouseout="$el.style.color='var(--text-secondary)'">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="!loading && alerts.length > 0"
+        style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+        <span x-text="alerts.length + ' alerts'"></span>
+        · Auto-refreshes every 15s
     </div>
 </div>
 
-<div class="alerts-container" style="display: flex; flex-direction: column; gap: 1rem;">
+<script>
+    function alertsPage() {
+        return {
+            alerts: [],
+            stats: { total: 0, by_severity: {} },
+            filterSeverity: '',
+            loading: true,
+            _interval: null,
 
-    <!-- Critical Alert -->
-    <div class="alert-item"
-        style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem;">
-        <div class="alert-icon"
-            style="background: var(--danger); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i class="fa-solid fa-person-running"></i>
-        </div>
-        <div class="alert-content" style="flex: 1;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Suspicious Activity Detected</h3>
-                <span style="font-size: 0.8rem; color: var(--text-secondary);">2 mins ago</span>
-            </div>
-            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Rapid movement detected in Corridor B
-                during class hours.</p>
-            <div style="margin-top: 0.5rem;">
-                <button
-                    style="font-size: 0.8rem; background: #1e293b; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.25rem; cursor: pointer;">View
-                    Clip</button>
-                <button
-                    style="font-size: 0.8rem; background: none; color: var(--text-secondary); border: none; padding: 0.25rem 0.75rem; cursor: pointer;">Dismiss</button>
-            </div>
-        </div>
-    </div>
+            init() {
+                this.fetchAlerts();
+                this.fetchStats();
+                this._interval = setInterval(() => {
+                    this.fetchAlerts();
+                    this.fetchStats();
+                }, 15000);
+            },
 
-    <!-- Warning Alert -->
-    <div class="alert-item"
-        style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem;">
-        <div class="alert-icon"
-            style="background: var(--warning); color: black; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i class="fa-solid fa-eye-slash"></i>
-        </div>
-        <div class="alert-content" style="flex: 1;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Camera Obstructed</h3>
-                <span style="font-size: 0.8rem; color: var(--text-secondary);">15 mins ago</span>
-            </div>
-            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Camera 04 (Library) view is partially
-                blocked.</p>
-        </div>
-    </div>
+            async fetchAlerts() {
+                try {
+                    const token = localStorage.getItem('token');
+                    let url = '/api/alerts/?limit=100';
+                    if (this.filterSeverity) url += `&severity=${this.filterSeverity}`;
 
-    <!-- Info Alert -->
-    <div class="alert-item"
-        style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: flex-start; gap: 1rem;">
-        <div class="alert-icon"
-            style="background: var(--accent); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i class="fa-solid fa-server"></i>
-        </div>
-        <div class="alert-content" style="flex: 1;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">System Backup Completed</h3>
-                <span style="font-size: 0.8rem; color: var(--text-secondary);">1 hour ago</span>
-            </div>
-            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Daily database backup successful. Size:
-                45MB.</p>
-        </div>
-    </div>
+                    const res = await fetch(url, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.alerts = data.alerts || [];
+                    }
+                } catch (e) {
+                    console.error('Alerts fetch error:', e);
+                } finally {
+                    this.loading = false;
+                }
+            },
 
-</div>
+            async fetchStats() {
+                try {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch('/api/alerts/stats', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        this.stats = await res.json();
+                    }
+                } catch (e) {
+                    console.error('Alert stats error:', e);
+                }
+            },
+
+            async dismissAlert(id) {
+                const token = localStorage.getItem('token');
+                await fetch(`/api/alerts/${id}/dismiss`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.fetchAlerts();
+            },
+
+            async deleteAlert(id) {
+                const token = localStorage.getItem('token');
+                await fetch(`/api/alerts/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.fetchAlerts();
+                this.fetchStats();
+            },
+
+            async clearAll() {
+                if (!confirm('Clear all alerts? This cannot be undone.')) return;
+                const token = localStorage.getItem('token');
+                await fetch('/api/alerts/clear', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.fetchAlerts();
+                this.fetchStats();
+            },
+
+            // --- Display helpers ---
+            alertTitle(alert) {
+                const titles = {
+                    'falling': 'Fall Detected',
+                    'fighting': 'Physical Altercation',
+                    'running': 'Running Detected',
+                    'loitering': 'Loitering Detected',
+                };
+                return titles[alert.event_type] || 'Suspicious Activity';
+            },
+
+            alertDescription(alert) {
+                const meta = alert.metadata || {};
+                if (typeof meta === 'string') {
+                    try { return JSON.parse(meta).description || meta; } catch { return meta; }
+                }
+                return meta.description || `${alert.event_type} activity detected`;
+            },
+
+            alertIcon(type) {
+                const icons = {
+                    'falling': 'fa-solid fa-person-falling',
+                    'fighting': 'fa-solid fa-hand-fist',
+                    'running': 'fa-solid fa-person-running',
+                    'loitering': 'fa-solid fa-clock',
+                };
+                return icons[type] || 'fa-solid fa-exclamation-triangle';
+            },
+
+            alertStyle(alert) {
+                const colors = {
+                    'high': 'background: rgba(239, 68, 68, 0.08); border-left: 4px solid var(--danger);',
+                    'medium': 'background: rgba(245, 158, 11, 0.08); border-left: 4px solid var(--warning);',
+                    'low': 'background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--accent);',
+                };
+                return colors[alert.severity] || colors['low'];
+            },
+
+            iconStyle(alert) {
+                const colors = {
+                    'high': 'background: var(--danger); color: white;',
+                    'medium': 'background: var(--warning); color: black;',
+                    'low': 'background: var(--accent); color: white;',
+                };
+                return colors[alert.severity] || colors['low'];
+            },
+
+            severityPillStyle(sev) {
+                const styles = {
+                    'high': 'background: rgba(239, 68, 68, 0.2); color: var(--danger);',
+                    'medium': 'background: rgba(245, 158, 11, 0.2); color: var(--warning);',
+                    'low': 'background: rgba(59, 130, 246, 0.2); color: var(--accent);',
+                };
+                return styles[sev] || styles['low'];
+            },
+
+            severityBadgeStyle(sev) {
+                return this.severityPillStyle(sev);
+            },
+
+            timeAgo(timestamp) {
+                if (!timestamp) return '';
+                const now = new Date();
+                const t = new Date(timestamp);
+                const diff = Math.floor((now - t) / 1000);
+
+                if (diff < 60) return 'just now';
+                if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+                if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+                return t.toLocaleDateString();
+            },
+
+            destroy() {
+                if (this._interval) clearInterval(this._interval);
+            }
+        };
+    }
+</script>

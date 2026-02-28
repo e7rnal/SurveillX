@@ -30,11 +30,30 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Model weights (download separately)
+*.pt
+*.pth
+*.onnx
+
 # Clips and media
 clips/
 *.mp4
 *.avi
 
+# Uploads (user data)
+uploads/
+
+# Runtime files
+pids/
+*.pid
+
 # Temporary files
 *.tmp
 temp/
+
+# Agent/AI tools
+.agent/
+.gemini/
+
+# Test cache
+.pytest_cache/

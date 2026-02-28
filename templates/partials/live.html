@@ -1,94 +1,123 @@
-<!-- Multi-Camera Grid with Real Streaming Support -->
-<div class="camera-grid-container">
-    <!-- Grid Controls -->
+<!-- SurveillX Live Monitor — 3-Panel Streaming -->
+<div class="multi-stream-container">
+    <!-- Top Controls Bar -->
     <div class="grid-controls">
         <div class="control-group">
-            <label>Layout:</label>
-            <button class="layout-button active" data-layout="1" title="Single Main Camera">
-                <svg viewBox="0 0 24 24">
-                    <rect x="4" y="4" width="16" height="16" fill="currentColor" />
-                </svg>
-            </button>
+            <span class="feed-label"><i class="fa-solid fa-tv"></i> Live Monitor</span>
         </div>
-
         <div class="control-group">
             <select id="stream-mode-select"
                 style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:6px;font-size:0.875rem;">
                 <option value="jpegws">JPEG WebSocket</option>
                 <option value="fastrtc">FastRTC</option>
             </select>
-
             <button class="btn btn-sm" id="connect-btn">
                 <i class="fas fa-plug"></i> Connect
             </button>
             <button class="btn btn-sm" id="disconnect-btn" style="display:none;">
                 <i class="fas fa-plug-circle-xmark"></i> Disconnect
             </button>
-            <button class="btn btn-sm" id="fullscreen-toggle">
-                <i class="fas fa-expand"></i> Fullscreen
-            </button>
         </div>
     </div>
 
-    <!-- Main Camera Feed -->
-    <div class="main-camera-feed">
-        <div class="feed-header">
-            <span class="feed-label">
-                <i class="fa-solid fa-video"></i> <span id="camera-name">Main Camera</span>
-            </span>
-            <span class="feed-status" id="stream-status">
-                <i class="fa-solid fa-circle"></i> Disconnected
-            </span>
-        </div>
-
-        <div class="feed-container" id="feed-container" style="position:relative; background:#000; aspect-ratio:16/9;">
-            <canvas id="live-canvas" width="1280" height="720" style="width:100%; height:100%;"></canvas>
-            <canvas id="detection-canvas" width="1280" height="720"
-                style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
-
-            <!-- No Stream Overlay -->
-            <div class="feed-overlay" id="feed-overlay">
-                <i class="fa-solid fa-video-slash"></i>
-                <div>No video stream</div>
-                <div class="hint">Click Connect to start streaming</div>
+    <!-- Stream Panels Grid -->
+    <div class="stream-panels">
+        <!-- ========== MAIN STREAM (Large, top) ========== -->
+        <div class="stream-panel main-panel" id="main-panel">
+            <div class="panel-header">
+                <span class="panel-label">
+                    <i class="fa-solid fa-video"></i> <span id="camera-name">Main Camera</span>
+                    <span class="panel-tag main-tag">LIVE</span>
+                </span>
+                <span class="panel-status" id="stream-status">
+                    <i class="fa-solid fa-circle"></i> Disconnected
+                </span>
+            </div>
+            <div class="panel-feed" style="aspect-ratio:16/9;">
+                <canvas id="main-canvas" width="1280" height="720"></canvas>
+                <!-- No Stream Overlay -->
+                <div class="feed-overlay" id="feed-overlay">
+                    <i class="fa-solid fa-video-slash"></i>
+                    <div>No video stream</div>
+                    <div class="hint">Click Connect to start streaming</div>
+                </div>
+            </div>
+            <div class="panel-stats">
+                <span><i class="fa-solid fa-gauge"></i> FPS: <strong id="fps-display">0</strong></span>
+                <span><i class="fa-solid fa-expand"></i> <span id="resolution-display">--</span></span>
+                <span id="connection-status">Latency: <strong id="latency-display">--</strong></span>
+                <span>Frames: <strong id="frame-count">0</strong></span>
+                <span>Mode: <strong id="current-mode">--</strong></span>
             </div>
         </div>
 
-        <div class="feed-info">
-            <div id="detection-info">
-                <i class="fa-solid fa-face-smile"></i> Faces: <span id="face-count">0</span> |
-                <i class="fa-solid fa-person-running"></i> Activity: <span id="activity-status">Normal</span> |
-                <i class="fa-solid fa-gauge"></i> FPS: <span id="fps-display">0</span> |
-                <span id="connection-status">Latency: <span id="latency-display">--</span>ms</span>
+        <!-- ========== ACTIVITY DETECTION (Medium, bottom-left) ========== -->
+        <div class="stream-panel activity-panel" id="activity-panel">
+            <div class="panel-header">
+                <span class="panel-label">
+                    <i class="fa-solid fa-person-running"></i> Activity Detection
+                    <span class="panel-tag activity-tag">SKELETON</span>
+                </span>
+                <span class="panel-activity-badge" id="activity-badge">Normal</span>
+            </div>
+            <div class="panel-feed" style="aspect-ratio:16/9;">
+                <canvas id="activity-canvas" width="640" height="360"></canvas>
+                <canvas id="skeleton-overlay" width="640" height="360"
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+                <div class="feed-overlay activity-waiting" id="activity-overlay">
+                    <i class="fa-solid fa-bone"></i>
+                    <div>Skeleton view ready</div>
+                </div>
+            </div>
+            <div class="panel-stats">
+                <span>Activity: <strong id="activity-status" style="color:#22c55e;">Normal</strong></span>
+                <span>Persons: <strong id="person-count">0</strong></span>
+                <span>Confidence: <strong id="activity-confidence">--</strong></span>
+            </div>
+        </div>
+
+        <!-- ========== FACIAL RECOGNITION (Small, bottom-right) ========== -->
+        <div class="stream-panel face-panel" id="face-panel">
+            <div class="panel-header">
+                <span class="panel-label">
+                    <i class="fa-solid fa-face-smile"></i> Facial Recognition
+                    <span class="panel-tag face-tag">DETECT</span>
+                </span>
+                <span class="face-beep-toggle" title="Toggle beep sound">
+                    <i class="fa-solid fa-volume-high" id="beep-icon"></i>
+                </span>
+            </div>
+            <div class="panel-feed" style="aspect-ratio:16/9;">
+                <canvas id="face-canvas" width="640" height="360"></canvas>
+                <div class="feed-overlay face-waiting" id="face-overlay">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <div>Face scan ready</div>
+                </div>
+            </div>
+            <div class="panel-stats">
+                <span>Faces: <strong id="face-count">0</strong></span>
+                <span>Known: <strong id="known-faces-count" style="color:#8b5cf6;">--</strong></span>
+                <span>Recognized: <strong id="recognized-count" style="color:#22c55e;">0</strong></span>
+                <span>Unknown: <strong id="unknown-count" style="color:#6366f1;">0</strong></span>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Right Sidebar -->
     <div class="live-sidebar">
         <div class="card">
-            <h3><i class="fa-solid fa-signal"></i> Stream Status</h3>
-            <div class="status-item">
-                <span>Connection</span>
-                <span id="ws-status" class="status-badge disconnected">Disconnected</span>
-            </div>
-            <div class="status-item">
-                <span>Resolution</span>
-                <span id="resolution-display">--</span>
-            </div>
-            <div class="status-item">
-                <span>Frames</span>
-                <span id="frame-count">0</span>
-            </div>
-            <div class="status-item">
-                <span>Mode</span>
-                <span id="current-mode">--</span>
+            <h3><i class="fa-solid fa-user-check"></i> Recognized Faces</h3>
+            <div id="recognized-faces-list" style="max-height: 200px; overflow-y: auto;">
+                <div class="empty-state small">
+                    <i class="fa-solid fa-user-slash"></i>
+                    <p>No faces recognized yet</p>
+                </div>
             </div>
         </div>
 
         <div class="card">
-            <h3><i class="fa-solid fa-user-check"></i> Live Detections</h3>
-            <div id="live-detections" class="detection-list">
+            <h3><i class="fa-solid fa-bell"></i> Live Detections</h3>
+            <div id="live-detections" class="detection-list" style="max-height: 200px; overflow-y: auto;">
                 <div class="empty-state small">
                     <i class="fa-solid fa-eye-slash"></i>
                     <p>No detections</p>
@@ -101,22 +130,26 @@
             <button class="btn secondary full-width" onclick="window.captureSnapshot()" style="margin-bottom:0.5rem;">
                 <i class="fa-solid fa-camera"></i> Capture Snapshot
             </button>
-            <button class="btn secondary full-width" onclick="window.renameCamera()">
+            <button class="btn secondary full-width" onclick="window.renameCamera()" style="margin-bottom:0.5rem;">
                 <i class="fa-solid fa-pen"></i> Rename Camera
+            </button>
+            <button class="btn secondary full-width" id="fullscreen-toggle">
+                <i class="fa-solid fa-expand"></i> Fullscreen Main
             </button>
         </div>
     </div>
 </div>
 
 <script>
-    // Camera Stream Manager - Integrates with existing app.js streaming
+    // 3-Panel Stream Manager
     (function () {
-        const CameraStreamManager = {
-            socket: null,
+        const StreamManager = {
             isConnected: false,
             streamMode: 'jpegws',
-            frameCount: 0,
-            lastFrameTime: null,
+            beepEnabled: true,   // Toggle beep sound
+            _audioCtx: null,
+            _personBeepMap: {},  // student_id → last beep timestamp
+            _beepCooldownMs: 30000, // 30s per person before beeping again
 
             init() {
                 this.setupControls();
@@ -125,17 +158,9 @@
             },
 
             setupControls() {
-                // Connect button
-                document.getElementById('connect-btn')?.addEventListener('click', () => {
-                    this.connect();
-                });
+                document.getElementById('connect-btn')?.addEventListener('click', () => this.connect());
+                document.getElementById('disconnect-btn')?.addEventListener('click', () => this.disconnect());
 
-                // Disconnect button
-                document.getElementById('disconnect-btn')?.addEventListener('click', () => {
-                    this.disconnect();
-                });
-
-                // Stream mode selector
                 document.getElementById('stream-mode-select')?.addEventListener('change', (e) => {
                     this.streamMode = e.target.value;
                     this.saveStreamConfig();
@@ -145,13 +170,23 @@
                     }
                 });
 
-                // Fullscreen
                 document.getElementById('fullscreen-toggle')?.addEventListener('click', () => {
-                    const container = document.getElementById('feed-container');
+                    const panel = document.getElementById('main-panel');
                     if (!document.fullscreenElement) {
-                        container.requestFullscreen();
+                        panel.requestFullscreen();
                     } else {
                         document.exitFullscreen();
+                    }
+                });
+
+                // Beep toggle
+                document.querySelector('.face-beep-toggle')?.addEventListener('click', () => {
+                    this.beepEnabled = !this.beepEnabled;
+                    const icon = document.getElementById('beep-icon');
+                    if (icon) {
+                        icon.className = this.beepEnabled
+                            ? 'fa-solid fa-volume-high'
+                            : 'fa-solid fa-volume-xmark';
                     }
                 });
             },
@@ -183,155 +218,184 @@
 
             connect() {
                 if (this.isConnected) return;
-
-                // Trigger the actual connection through app.js
                 if (window.app && window.app.connectSocket) {
                     window.app.connectSocket();
-
-                    // Give it a moment to establish connection
                     setTimeout(() => {
                         if (window.app.socket) {
-                            this.socket = window.app.socket;
                             this.isConnected = true;
                             this.updateConnectionUI(true);
-                            this.startFPSMonitoring();
-                            console.log('Connected to stream via app.js socket');
+                            console.log('Connected to stream');
                         } else {
                             this.updateConnectionUI(false, 'Socket connection failed');
                         }
                     }, 500);
-                } else {
-                    console.error('App not available or connectSocket not found');
-                    this.updateConnectionUI(false, 'App not initialized');
                 }
             },
 
             disconnect() {
                 this.isConnected = false;
                 this.updateConnectionUI(false);
-                this.frameCount = 0;
-                document.getElementById('frame-count').textContent = '0';
-                document.getElementById('fps-display').textContent = '0';
 
-                // Clear canvas
-                const canvas = document.getElementById('live-canvas');
-                if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }
+                ['main-canvas', 'activity-canvas', 'face-canvas'].forEach(id => {
+                    const c = document.getElementById(id);
+                    if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
+                });
             },
 
             updateConnectionUI(connected, error = null) {
                 const status = document.getElementById('stream-status');
-                const wsStatus = document.getElementById('ws-status');
-                const overlay = document.getElementById('feed-overlay');
                 const connectBtn = document.getElementById('connect-btn');
                 const disconnectBtn = document.getElementById('disconnect-btn');
+                const overlay = document.getElementById('feed-overlay');
 
                 if (connected) {
-                    status.innerHTML = '<i class="fa-solid fa-circle" style="color:#10b981;"></i> Connected';
-                    wsStatus.textContent = 'Connected';
-                    wsStatus.className = 'status-badge connected';
-                    overlay.style.display = 'none';
-                    connectBtn.style.display = 'none';
-                    disconnectBtn.style.display = 'inline-flex';
+                    if (status) status.innerHTML = '<i class="fa-solid fa-circle" style="color:#10b981;"></i> Connected';
+                    if (overlay) overlay.style.display = 'none';
+                    if (connectBtn) connectBtn.style.display = 'none';
+                    if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
                 } else {
-                    status.innerHTML = '<i class="fa-solid fa-circle" style="color:#ef4444;"></i> Disconnected';
-                    wsStatus.textContent = error || 'Disconnected';
-                    wsStatus.className = 'status-badge disconnected';
-                    overlay.style.display = 'flex';
-                    connectBtn.style.display = 'inline-flex';
-                    disconnectBtn.style.display = 'none';
+                    if (status) status.innerHTML = '<i class="fa-solid fa-circle" style="color:#ef4444;"></i> Disconnected';
+                    if (overlay) overlay.style.display = 'flex';
+                    if (connectBtn) connectBtn.style.display = 'inline-flex';
+                    if (disconnectBtn) disconnectBtn.style.display = 'none';
                 }
             },
 
-            startFPSMonitoring() {
-                setInterval(() => {
-                    if (this.isConnected && window.app) {
-                        const fps = window.app.frameCount || 0;
-                        document.getElementById('fps-display').textContent = fps;
+            // --- Beep Sound via Web Audio API ---
+            playBeep() {
+                if (!this.beepEnabled) return;
 
-                        // Update frame count
-                        if (window.app.frameCount) {
-                            this.frameCount = window.app.frameCount;
-                            document.getElementById('frame-count').textContent = this.frameCount;
-                        }
+                try {
+                    if (!this._audioCtx) this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const ctx = this._audioCtx;
 
-                        // Update resolution
-                        const canvas = document.getElementById('live-canvas');
-                        if (canvas && canvas.width > 0) {
-                            document.getElementById('resolution-display').textContent =
-                                `${canvas.width}x${canvas.height}`;
-                        }
-                    }
-                }, 1000);
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.value = 880; // A5 note
+
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.3);
+                } catch (e) {
+                    console.warn('Beep error:', e);
+                }
             },
 
             syncUIWithApp() {
-                // Sync with app.js state
                 if (window.app && window.app.socket && window.app.socket.connected) {
-                    this.socket = window.app.socket;
                     this.isConnected = true;
                     this.updateConnectionUI(true);
-                    this.startFPSMonitoring();
                 }
-
-                // Listen for detection events
                 this.connectToDetections();
+                this.loadKnownFacesCount();
             },
 
             connectToDetections() {
-                // Connect to detection events from SocketIO
                 const setupListener = () => {
                     if (window.app && window.app.socket) {
-                        console.log('🔌 Setting up detection listener on socket:', window.app.socket);
-                        console.log('📡 Socket connected:', window.app.socket.connected);
-                        console.log('🌐 Socket namespace:', window.app.socket.nsp);
-
-                        // Listen for detections
                         window.app.socket.on('detection', (data) => {
-                            console.log('📥 Detection event received!', data);
-                            console.log('👤 Faces:', data.faces?.length || 0);
-                            console.log('🏃 Activity:', data.activity?.type || 'none');
                             this.handleDetection(data);
                         });
-
-                        // Listen for frames to hide overlay
-                        window.app.socket.on('frame', () => {
-                            const overlay = document.getElementById('feed-overlay');
-                            if (overlay) overlay.style.display = 'none';
-                        });
-
-                        console.log('✅ Detection listener setup complete');
                     } else {
-                        console.log('⏳ Waiting for app.socket to be available...');
                         setTimeout(setupListener, 500);
                     }
                 };
                 setupListener();
+
+                // REST polling fallback
+                this._pollInterval = setInterval(async () => {
+                    try {
+                        const resp = await fetch('/api/detections/latest');
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data.faces && data.faces.length > 0) {
+                                this.handleDetection(data);
+                            }
+                        }
+                    } catch (e) { }
+                }, 3000);
+            },
+
+            async loadKnownFacesCount() {
+                try {
+                    const resp = await fetch('/api/internal/known-faces');
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const el = document.getElementById('known-faces-count');
+                        if (el) el.textContent = data.faces ? data.faces.length : 0;
+                    }
+                } catch (e) { }
             },
 
             handleDetection(data) {
                 const faces = data.faces || [];
-                const activity = data.activity || {};
-
-                // Update face count
                 const faceCount = document.getElementById('face-count');
                 if (faceCount) faceCount.textContent = faces.length;
 
-                // Update activity status
-                const activityStatus = document.getElementById('activity-status');
-                if (activityStatus) {
-                    const type = activity.type || 'normal';
-                    activityStatus.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-                    activityStatus.style.color = type === 'normal' ? '#10b981' : '#f59e0b';
+                // Beep per recognized person — once every 30s per student
+                const now = Date.now();
+                for (const f of faces) {
+                    if (!f.student_id) continue;
+                    const key = String(f.student_id);
+                    const lastBeep = this._personBeepMap[key] || 0;
+                    if (now - lastBeep >= this._beepCooldownMs) {
+                        this._personBeepMap[key] = now;
+                        this.playBeep();
+                        break; // one beep per detection event max
+                    }
                 }
 
-                // Update detections list
+                this.updateFaceRecognitionPanel(faces);
                 this.updateDetectionsList(faces);
+            },
 
-                // Draw overlays
-                this.drawDetectionOverlay(faces, activity);
+            updateFaceRecognitionPanel(faces) {
+                const recognized = faces.filter(f => f.student_id);
+                const unknown = faces.filter(f => !f.student_id);
+
+                const recognizedCount = document.getElementById('recognized-count');
+                const unknownCount = document.getElementById('unknown-count');
+                if (recognizedCount) recognizedCount.textContent = recognized.length;
+                if (unknownCount) unknownCount.textContent = unknown.length;
+
+                const list = document.getElementById('recognized-faces-list');
+                if (!list) return;
+
+                if (faces.length === 0) {
+                    list.innerHTML = '<div class="empty-state small"><i class="fa-solid fa-user-slash"></i><p>No faces recognized yet</p></div>';
+                    return;
+                }
+
+                const now = new Date().toLocaleTimeString();
+                list.innerHTML = faces.map(face => {
+                    const name = face.student_name || 'Unknown';
+                    const conf = face.confidence ? `${(face.confidence * 100).toFixed(0)}%` : '';
+                    const isRecognized = !!face.student_id;
+                    const color = isRecognized ? '#10b981' : '#6366f1';
+                    const icon = isRecognized ? 'fa-user-check' : 'fa-user-xmark';
+
+                    return `
+                        <div style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:0.4rem;border-left:3px solid ${color};">
+                            <div style="width:32px;height:32px;border-radius:50%;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa-solid ${icon}" style="color:${color};font-size:0.8rem;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:600;font-size:0.8rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+                                <div style="font-size:0.7rem;color:var(--text-secondary);">
+                                    <span style="color:${color};">${isRecognized ? 'Recognized' : 'Unknown'}</span>
+                                    ${conf ? `· ${conf}` : ''} · ${now}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             },
 
             updateDetectionsList(faces) {
@@ -339,228 +403,79 @@
                 if (!list) return;
 
                 if (faces.length === 0) {
-                    list.innerHTML = `
-                        <div class="empty-state small">
-                            <i class="fa-solid fa-eye-slash"></i>
-                            <p>No detections</p>
-                        </div>
-                    `;
+                    list.innerHTML = '<div class="empty-state small"><i class="fa-solid fa-eye-slash"></i><p>No detections</p></div>';
                     return;
                 }
 
                 list.innerHTML = faces.map(face => {
                     const name = face.student_name || 'Unknown';
                     const conf = face.confidence ? `${(face.confidence * 100).toFixed(0)}%` : '';
-                    const initial = name[0] || '?';
                     const color = face.student_id ? '#10b981' : '#6b7280';
 
                     return `
-                        <div class="list-item" style="padding:0.5rem;border-bottom:1px solid var(--border);">
-                            <div class="avatar" style="width:32px;height:32px;font-size:0.8rem;background:${color};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initial}</div>
-                            <div class="item-content" style="flex:1;margin-left:0.75rem;">
-                                <div class="item-title" style="font-size:0.85rem;font-weight:500;">${name}</div>
-                                <div class="item-subtitle" style="font-size:0.75rem;color:var(--text-secondary);">${conf}${face.age ? ' · Age ' + face.age : ''}</div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem;border-bottom:1px solid var(--border);">
+                            <div style="width:28px;height:28px;font-size:0.7rem;background:${color};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">${name[0] || '?'}</div>
+                            <div style="flex:1;">
+                                <div style="font-size:0.8rem;font-weight:500;">${name}</div>
+                                <div style="font-size:0.7rem;color:var(--text-secondary);">${conf}</div>
                             </div>
                         </div>
                     `;
                 }).join('');
-            },
-
-            drawDetectionOverlay(faces, activity) {
-                const canvas = document.getElementById('detection-canvas');
-                const videoCanvas = document.getElementById('live-canvas');
-                if (!canvas || !videoCanvas) return;
-
-                // Sync canvas size
-                canvas.width = videoCanvas.width;
-                canvas.height = videoCanvas.height;
-
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Draw face boxes
-                faces.forEach(face => {
-                    const loc = face.location;
-                    if (!loc) return;
-
-                    const x = loc.left;
-                    const y = loc.top;
-                    const w = loc.right - loc.left;
-                    const h = loc.bottom - loc.top;
-
-                    const recognized = !!face.student_id;
-                    const color = recognized ? '#10b981' : '#3b82f6';
-
-                    // Bounding box
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(x, y, w, h);
-
-                    // Label
-                    const name = face.student_name || 'Unknown';
-                    const conf = face.confidence ? ` ${(face.confidence * 100).toFixed(0)}%` : '';
-                    const label = `${name}${conf}`;
-
-                    ctx.font = 'bold 16px Inter, sans-serif';
-                    const tw = ctx.measureText(label).width + 12;
-
-                    // Label background
-                    ctx.fillStyle = color;
-                    ctx.fillRect(x, y - 26, tw, 26);
-
-                    // Label text
-                    ctx.fillStyle = '#fff';
-                    ctx.fillText(label, x + 6, y - 7);
-                });
-
-                // Draw activity badge if abnormal
-                const activityType = activity.type || 'normal';
-                if (activityType !== 'normal') {
-                    const label = activityType.toUpperCase();
-                    const color = '#f59e0b';
-
-                    ctx.font = 'bold 18px Inter, sans-serif';
-                    const tw = ctx.measureText(label).width + 24;
-                    const bx = canvas.width - tw - 15;
-                    const by = 15;
-
-                    ctx.fillStyle = color;
-                    ctx.globalAlpha = 0.9;
-                    ctx.fillRect(bx, by, tw, 36);
-                    ctx.globalAlpha = 1;
-
-                    ctx.fillStyle = '#fff';
-                    ctx.fillText(label, bx + 12, by + 25);
-                }
             }
-
         };
 
-        // Global functions for quick actions
+        // Global functions
         window.captureSnapshot = function () {
-            const canvas = document.getElementById('live-canvas');
+            const canvas = document.getElementById('main-canvas');
             if (!canvas) return;
-
             const link = document.createElement('a');
             link.download = `snapshot_${Date.now()}.png`;
             link.href = canvas.toDataURL();
             link.click();
-
-            if (window.Toast) {
-                window.Toast.success('Snapshot saved!');
-            }
+            if (window.Toast) Toast.success('Snapshot saved!');
         };
 
         window.renameCamera = function () {
-            const currentName = document.getElementById('camera-name').textContent;
-            const newName = prompt('Enter new camera name:', currentName);
+            const el = document.getElementById('camera-name');
+            const newName = prompt('Enter new camera name:', el?.textContent || 'Main Camera');
             if (newName && newName.trim()) {
-                document.getElementById('camera-name').textContent = newName.trim();
+                el.textContent = newName.trim();
                 localStorage.setItem('cameraName', newName.trim());
-                if (window.Toast) {
-                    window.Toast.success('Camera renamed!');
-                }
+                if (window.Toast) Toast.success('Camera renamed!');
             }
         };
 
-        // Initialize
+        // Auto-init
         const initWhenReady = () => {
             if (document.getElementById('stream-mode-select')) {
-                CameraStreamManager.init();
-
-                // Load saved camera name
+                StreamManager.init();
                 const savedName = localStorage.getItem('cameraName');
-                if (savedName) {
-                    document.getElementById('camera-name').textContent = savedName;
-                }
+                if (savedName) document.getElementById('camera-name').textContent = savedName;
             } else {
                 setTimeout(initWhenReady, 100);
             }
         };
-
         setTimeout(initWhenReady, 100);
     })();
 </script>
 
 <style>
-    .main-camera-feed {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        overflow: hidden;
-        background: var(--bg-card);
-    }
-
-    .feed-header {
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-tertiary);
-    }
-
-    .feed-label {
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .feed-status {
-        font-size: 0.875rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .feed-container {
-        position: relative;
-        background: #000;
-    }
-
-    .feed-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.9);
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 3rem;
-    }
-
-    .feed-overlay div {
-        font-size: 1rem;
-        margin-top: 1rem;
-    }
-
-    .feed-overlay .hint {
-        font-size: 0.875rem;
-        color: rgba(255, 255, 255, 0.3);
-    }
-
-    .feed-info {
-        padding: 0.75rem 1rem;
-        border-top: 1px solid var(--border);
-        background: var(--bg-tertiary);
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.875rem;
-    }
-
-    .camera-grid-container {
+    /* ===== Multi-Stream Container ===== */
+    .multi-stream-container {
         display: grid;
-        grid-template-columns: 1fr 320px;
-        gap: 1.5rem;
+        grid-template-columns: 1fr 280px;
         grid-template-rows: auto 1fr;
+        gap: 1rem;
     }
 
     .grid-controls {
         grid-column: 1 / -1;
+        grid-row: 1;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem;
+        padding: 0.75rem 1rem;
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -572,55 +487,233 @@
         gap: 0.5rem;
     }
 
-    .control-group label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-secondary);
+    /* ===== Stream Panels Grid ===== */
+    .stream-panels {
+        grid-column: 1;
+        grid-row: 2;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 1rem;
     }
 
-    .layout-button {
-        width: 36px;
-        height: 36px;
+    .stream-panel {
         border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--bg-card);
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .stream-panel:hover {
+        border-color: rgba(139, 92, 246, 0.3);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.08);
+    }
+
+    /* Main panel spans full width */
+    .main-panel {
+        grid-column: 1 / -1;
+        border-color: rgba(139, 92, 246, 0.2);
+    }
+
+    /* ===== Panel Header ===== */
+    .panel-header {
+        padding: 0.6rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
         background: var(--bg-tertiary);
-        color: var(--text-secondary);
-        border-radius: 6px;
-        cursor: pointer;
+    }
+
+    .panel-label {
+        font-weight: 600;
+        font-size: 0.85rem;
         display: flex;
         align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
+        gap: 0.5rem;
     }
 
-    .layout-button:hover {
-        background: var(--bg-secondary);
-        border-color: var(--accent);
+    .panel-tag {
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .main-tag {
+        background: rgba(139, 92, 246, 0.2);
+        color: #a78bfa;
+    }
+
+    .activity-tag {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+
+    .face-tag {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22c55e;
+    }
+
+    .panel-status {
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--text-secondary);
+    }
+
+    .panel-activity-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+        transition: all 0.3s;
+    }
+
+    .panel-activity-badge.abnormal {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        animation: pulse-badge 1s infinite;
+    }
+
+    @keyframes pulse-badge {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.6;
+        }
+    }
+
+    .face-beep-toggle {
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        transition: color 0.2s;
+        padding: 4px;
+    }
+
+    .face-beep-toggle:hover {
         color: var(--text-primary);
     }
 
-    .layout-button.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: white;
+    /* ===== Panel Feed (Canvas) ===== */
+    .panel-feed {
+        position: relative;
+        background: #0a0a0f;
+        overflow: hidden;
     }
 
-    .layout-button svg {
-        width: 20px;
-        height: 20px;
+    .panel-feed canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
     }
 
+    .feed-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.85);
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 2.5rem;
+        z-index: 2;
+    }
+
+    .feed-overlay div {
+        font-size: 0.85rem;
+        margin-top: 0.6rem;
+    }
+
+    .feed-overlay .hint {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.25);
+    }
+
+    .activity-waiting {
+        background: rgba(0, 0, 0, 0.8);
+        border-bottom: 2px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .face-waiting {
+        background: rgba(0, 0, 0, 0.8);
+        border-bottom: 2px solid rgba(34, 197, 94, 0.3);
+    }
+
+    /* ===== Panel Stats Bar ===== */
+    .panel-stats {
+        padding: 0.5rem 0.75rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg-tertiary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .panel-stats strong {
+        color: var(--text-primary);
+    }
+
+    /* ===== Live Sidebar ===== */
     .live-sidebar {
+        grid-column: 2;
+        grid-row: 2;
         display: flex;
         flex-direction: column;
         gap: 1rem;
     }
 
-    @media (max-width: 1024px) {
-        .camera-grid-container {
+    .live-sidebar .card {
+        padding: 1rem;
+    }
+
+    .live-sidebar .card h3 {
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1200px) {
+        .multi-stream-container {
             grid-template-columns: 1fr;
         }
 
         .live-sidebar {
+            grid-row: auto;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        .live-sidebar .card {
+            flex: 1;
+            min-width: 200px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stream-panels {
+            grid-template-columns: 1fr;
+        }
+
+        .main-panel {
             grid-column: 1;
         }
     }

@@ -1,72 +1,217 @@
-<div class="content-header" style="margin-bottom: 2rem;">
-    <h2 style="font-size: 1.25rem;">Attendance Logs</h2>
-    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-        <div class="search-box"
-            style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex: 1;">
-            <i class="fa-solid fa-search" style="color: var(--text-secondary);"></i>
-            <input type="text" placeholder="Search by name or roll no..."
-                style="background: none; border: none; color: white; outline: none; width: 100%;">
+<div x-data="attendancePage()" x-init="init()" class="attendance-page">
+    <div class="content-header" style="margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 1.25rem;">Attendance Logs</h2>
+            <div x-show="stats.present > 0"
+                style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.85rem;">
+                <i class="fa-solid fa-user-check" style="color: var(--success);"></i>
+                <span x-text="stats.present + '/' + stats.total_students + ' Present'"
+                    style="color: var(--success); font-weight: 600;"></span>
+                <span style="color: var(--text-secondary);"> · </span>
+                <span x-text="stats.percentage + '%'" style="color: var(--text-secondary);"></span>
+            </div>
         </div>
-        <input type="date"
-            style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white; color-scheme: dark;">
-        <button class="btn-export"
-            style="background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
-            <i class="fa-solid fa-download"></i> Export CSV
-        </button>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; align-items: center;">
+            <div class="search-box"
+                style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 200px;">
+                <i class="fa-solid fa-search" style="color: var(--text-secondary);"></i>
+                <input type="text" placeholder="Search by name or roll no..." x-model="searchQuery"
+                    @input.debounce.300ms="fetchRecords()"
+                    style="background: none; border: none; color: white; outline: none; width: 100%;">
+            </div>
+            <!-- Single date OR range filter -->
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <label style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">From</label>
+                <input type="date" x-model="fromDate" @change="onDateChange()"
+                    style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white; color-scheme: dark;">
+                <label style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">To</label>
+                <input type="date" x-model="toDate" @change="onDateChange()"
+                    style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 0.5rem; color: white; color-scheme: dark;">
+            </div>
+            <button @click="exportCSV()"
+                style="background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading state -->
+    <div x-show="loading" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem;"></i>
+        <p style="margin-top: 1rem;">Loading attendance records...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && records.length === 0"
+        style="text-align: center; padding: 4rem 2rem; background: var(--bg-card); border-radius: 1rem; border: var(--glass-border);">
+        <i class="fa-solid fa-clipboard-list" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.5;"></i>
+        <h3 style="margin-top: 1rem; color: var(--text-secondary);">No Attendance Records</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 400px; margin: 0.5rem auto;">
+            Attendance is automatically marked when students are recognized via face detection.
+            Records will appear here once students are identified.
+        </p>
+    </div>
+
+    <!-- Table -->
+    <div x-show="!loading && records.length > 0" class="table-container"
+        style="background: var(--bg-card); border-radius: 1rem; border: var(--glass-border); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr
+                    style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 0.85rem;">
+                    <th style="padding: 1rem 2rem;">#</th>
+                    <th style="padding: 1rem;">Date</th>
+                    <th style="padding: 1rem;">Time</th>
+                    <th style="padding: 1rem;">Student Name</th>
+                    <th style="padding: 1rem;">Roll No</th>
+                    <th style="padding: 1rem;">Class</th>
+                    <th style="padding: 1rem;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(record, idx) in records" :key="record.id || idx">
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                        :style="idx % 2 === 0 ? '' : 'background: rgba(255,255,255,0.02)'">
+                        <td style="padding: 1rem 2rem; color: var(--text-secondary);" x-text="idx + 1"></td>
+                        <td style="padding: 1rem; color: var(--text-secondary);font-size:0.8rem;"
+                            x-text="formatDate(record.timestamp)"></td>
+                        <td style="padding: 1rem; color: var(--text-secondary);" x-text="formatTime(record.timestamp)">
+                        </td>
+                        <td style="padding: 1rem; font-weight: 500;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div
+                                    style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0;">
+                                    <span x-text="(record.student_name || '?')[0].toUpperCase()"></span>
+                                </div>
+                                <span x-text="record.student_name || 'Unknown'"></span>
+                            </div>
+                        </td>
+                        <td style="padding: 1rem; color: var(--text-secondary);" x-text="record.roll_no || '—'"></td>
+                        <td style="padding: 1rem;" x-text="record.class || '—'"></td>
+                        <td style="padding: 1rem;">
+                            <span style="color: var(--success);">
+                                <i class="fa-solid fa-check-circle"></i> Present
+                            </span>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <div x-show="!loading && records.length > 0"
+        style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+        <span x-text="records.length + ' records'"></span>
+        · Auto-refreshes every 30s
     </div>
 </div>
 
-<div class="table-container"
-    style="background: var(--bg-card); border-radius: 1rem; border: var(--glass-border); overflow: hidden;">
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-        <thead>
-            <tr
-                style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 0.85rem;">
-                <th style="padding: 1rem 2rem;">Time</th>
-                <th style="padding: 1rem;">Student Name</th>
-                <th style="padding: 1rem;">Roll No</th>
-                <th style="padding: 1rem;">Class</th>
-                <th style="padding: 1rem;">Captured via</th>
-                <th style="padding: 1rem;">Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:45 AM</td>
-                <td style="padding: 1rem; font-weight: 500;">Vishnu Jadhav</td>
-                <td style="padding: 1rem; color: var(--text-secondary);">52</td>
-                <td style="padding: 1rem;">BCA - III</td>
-                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-01</td>
-                <td style="padding: 1rem;"><span style="color: var(--success);"><i class="fa-solid fa-check-circle"></i>
-                        Present</span></td>
-            </tr>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:42 AM</td>
-                <td style="padding: 1rem; font-weight: 500;">Rohan Sharma</td>
-                <td style="padding: 1rem; color: var(--text-secondary);">45</td>
-                <td style="padding: 1rem;">BCA - III</td>
-                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-01</td>
-                <td style="padding: 1rem;"><span style="color: var(--success);"><i class="fa-solid fa-check-circle"></i>
-                        Present</span></td>
-            </tr>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:38 AM</td>
-                <td style="padding: 1rem; font-weight: 500;">Priya Singh</td>
-                <td style="padding: 1rem; color: var(--text-secondary);">12</td>
-                <td style="padding: 1rem;">BCA - II</td>
-                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-02</td>
-                <td style="padding: 1rem;"><span style="color: var(--success);"><i class="fa-solid fa-check-circle"></i>
-                        Present</span></td>
-            </tr>
-            <tr>
-                <td style="padding: 1rem 2rem; color: var(--text-secondary);">09:30 AM</td>
-                <td style="padding: 1rem; font-weight: 500;">Amit Kumar</td>
-                <td style="padding: 1rem; color: var(--text-secondary);">08</td>
-                <td style="padding: 1rem;">BCA - III</td>
-                <td style="padding: 1rem;"><i class="fa-solid fa-video"></i> CAM-01</td>
-                <td style="padding: 1rem;"><span style="color: var(--warning);"><i class="fa-solid fa-clock"></i>
-                        Late</span></td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<script>
+    function attendancePage() {
+        const today = new Date().toISOString().split('T')[0];
+        return {
+            records: [],
+            stats: { present: 0, total_students: 0, percentage: 0 },
+            searchQuery: '',
+            fromDate: today,
+            toDate: today,
+            loading: true,
+            _interval: null,
+
+            init() {
+                this.fetchRecords();
+                this.fetchStats();
+                this._interval = setInterval(() => {
+                    this.fetchRecords();
+                    this.fetchStats();
+                }, 30000);
+            },
+
+            onDateChange() {
+                // Auto-fix: if toDate is before fromDate, set toDate = fromDate
+                if (this.toDate < this.fromDate) this.toDate = this.fromDate;
+                this.fetchRecords();
+            },
+
+            async fetchRecords() {
+                try {
+                    const token = localStorage.getItem('token');
+                    let url;
+                    if (this.fromDate === this.toDate) {
+                        // Single date
+                        url = `/api/attendance/?date=${this.fromDate}&limit=500`;
+                    } else {
+                        // Date range
+                        url = `/api/attendance/?from_date=${this.fromDate}&to_date=${this.toDate}&limit=1000`;
+                    }
+                    if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
+
+                    const res = await fetch(url, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.records = data.records || [];
+                    }
+                } catch (e) {
+                    console.error('Attendance fetch error:', e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            async fetchStats() {
+                try {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch('/api/attendance/stats', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        this.stats = await res.json();
+                    }
+                } catch (e) {
+                    console.error('Stats fetch error:', e);
+                }
+            },
+
+            formatDate(timestamp) {
+                if (!timestamp) return '—';
+                try {
+                    const d = new Date(timestamp);
+                    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                } catch { return ''; }
+            },
+
+            formatTime(timestamp) {
+                if (!timestamp) return '—';
+                try {
+                    const d = new Date(timestamp);
+                    return d.toLocaleTimeString('en-US', {
+                        hour: '2-digit', minute: '2-digit', hour12: true
+                    });
+                } catch {
+                    return timestamp;
+                }
+            },
+
+            exportCSV() {
+                const token = localStorage.getItem('token');
+                // Export using date range
+                const url = `/api/attendance/export?date=${this.fromDate}`;
+                fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(res => res.blob()).then(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    const label = this.fromDate === this.toDate ? this.fromDate : `${this.fromDate}_to_${this.toDate}`;
+                    a.download = `attendance_${label}.csv`;
+                    a.click();
+                }).catch(e => console.error('Export error:', e));
+            },
+
+            destroy() {
+                if (this._interval) clearInterval(this._interval);
+            }
+        };
+    }
+</script>

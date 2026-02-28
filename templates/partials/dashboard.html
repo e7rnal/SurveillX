@@ -1,0 +1,261 @@
+<!-- System Health Section -->
+<div class="health-section">
+    <h3>System Health</h3>
+
+    <div class="health-grid">
+        <div class="health-card">
+            <div class="health-icon success">
+                <i class="fas fa-video"></i>
+            </div>
+            <div class="health-content">
+                <div class="health-label">Cameras Online</div>
+                <div class="health-value" id="cameras-online">15/16</div>
+                <div class="health-status success">94% Uptime</div>
+            </div>
+        </div>
+
+        <div class="health-card">
+            <div class="health-icon warning">
+                <i class="fas fa-hdd"></i>
+            </div>
+            <div class="health-content">
+                <div class="health-label">Storage Available</div>
+                <div class="health-value" id="storage-available">2.4 TB</div>
+                <div class="health-status warning">60% Used</div>
+            </div>
+        </div>
+
+        <div class="health-card">
+            <div class="health-icon success">
+                <i class="fas fa-network-wired"></i>
+            </div>
+            <div class="health-content">
+                <div class="health-label">Network Status</div>
+                <div class="health-value">Optimal</div>
+                <div class="health-status success">12ms avg latency</div>
+            </div>
+        </div>
+
+        <div class="health-card">
+            <div class="health-icon danger">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="health-content">
+                <div class="health-label">Active Alerts</div>
+                <div class="health-value" id="active-alerts">3</div>
+                <div class="health-status danger">2 High Priority</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-content">
+            <div class="stat-label">Total Cameras</div>
+            <div class="stat-value" id="total-cameras">16</div>
+            <div class="stat-change">↑ +2 this month</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fas fa-video"></i>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <div class="stat-label">Today's Attendance</div>
+            <div class="stat-value" id="today-attendance">248</div>
+            <div class="stat-change">↑ +12% vs yesterday</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fas fa-users"></i>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <div class="stat-label">Active Streams</div>
+            <div class="stat-value" id="active-streams">15</div>
+            <div class="stat-change">93.75% online</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fas fa-circle-play"></i>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <div class="stat-label">Alerts Today</div>
+            <div class="stat-value" id="alerts-today">12</div>
+            <div class="stat-change danger">3 unresolved</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fas fa-bell"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Rows -->
+<div class="dashboard-row" style="grid-template-columns: 2fr 1fr;">
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Detections</h3>
+            <button class="btn btn-sm">View All</button>
+        </div>
+        <div class="detect-list">
+            <div class="detect-item">
+                <div class="detect-icon success">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="detect-content">
+                    <div class="detect-title">Student Identified</div>
+                    <div class="detect-meta">John Doe • STU-2024-001 • Entrance Gate</div>
+                </div>
+                <div class="detect-time">2 min ago</div>
+            </div>
+            <div class="detect-item">
+                <div class="detect-icon success">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="detect-content">
+                    <div class="detect-title">Student Identified</div>
+                    <div class="detect-meta">Jane Smith • STU-2024-002 • Entrance Gate</div>
+                </div>
+                <div class="detect-time">5 min ago</div>
+            </div>
+            <div class="detect-item">
+                <div class="detect-icon warning">
+                    <i class="fas fa-user-xmark"></i>
+                </div>
+                <div class="detect-content">
+                    <div class="detect-title">Unrecognized Person</div>
+                    <div class="detect-meta">Unknown • Corridor A</div>
+                </div>
+                <div class="detect-time">8 min ago</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Quick Stats</h3>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Recognition Rate</span>
+                    <span style="font-size: 0.875rem; font-weight: 600;">98.5%</span>
+                </div>
+                <div style="height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: 98.5%; background: var(--success);"></div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">System Load</span>
+                    <span style="font-size: 0.875rem; font-weight: 600;">45%</span>
+                </div>
+                <div style="height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: 45%; background: var(--accent);"></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Disk Usage</span>
+                    <span style="font-size: 0.875rem; font-weight: 600;">60%</span>
+                </div>
+                <div style="height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: 60%; background: var(--warning);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .detect-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .detect-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+    }
+
+    .detect-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .detect-icon.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+    }
+
+    .detect-icon.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+    }
+
+    .detect-content {
+        flex: 1;
+    }
+
+    .detect-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .detect-meta {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .detect-time {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+</style>
+
+<script>
+    // Update health metrics periodically
+    function updateHealthMetrics() {
+        // Simulate real-time updates
+        const updates = {
+            camerasOnline: Math.floor(Math.random() * 2) + 15,
+            storageAvailable: (2.3 + Math.random() * 0.2).toFixed(1),
+            activeAlerts: Math.floor(Math.random() * 5) + 1
+        };
+
+        const camerasEl = document.getElementById('cameras-online');
+        const storageEl = document.getElementById('storage-available');
+        const alertsEl = document.getElementById('active-alerts');
+
+        if (camerasEl) camerasEl.textContent = `${updates.camerasOnline}/16`;
+        if (storageEl) storageEl.textContent = `${updates.storageAvailable} TB`;
+        if (alertsEl) alertsEl.textContent = updates.activeAlerts;
+    }
+
+    // Update every 10 seconds
+    setInterval(updateHealthMetrics, 10000);
+</script>
